@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enter Marks | Bluejay School</title>
+    <link rel="stylesheet" href="../../assets/css/main.css">
+</head>
+
+<body>
+    <div class="app">
+        <div id="sidebar-placeholder"></div>
+        <div class="main">
+            <header class="topbar">
+                <div class="topbar-left">
+                    <div class="topbar-title">Enter Marks</div>
+                    <div class="topbar-path">Teacher / Grades</div>
+                </div>
+            </header>
+            <div class="page-content">
+                <div class="ph">
+                    <div>
+                        <h1>Enter Student Marks</h1>
+                        <p>Marks you enter will be sent to the Head Teacher for approval</p>
+                    </div>
+                </div>
+
+                <div class="card mb-20">
+                    <div class="card-body">
+                        <div class="form-row form-row-3">
+                            <div class="form-group"><label class="form-label">Subject</label><select
+                                    class="form-control" id="sub-sel" onchange="loadStudents()">
+                                    <option value="">Select subject…</option>
+                                </select></div>
+                            <div class="form-group"><label class="form-label">Term</label><select class="form-control"
+                                    id="term-sel">
+                                    <option>Term 1</option>
+                                    <option>Term 2</option>
+                                    <option>Term 3</option>
+                                </select></div>
+                            <div class="form-group"><label class="form-label">Max Marks</label><input
+                                    class="form-control" id="max-marks" type="number" value="100" min="1"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="marks-area">
+                    <div class="empty"><span class="material-icons-round">grade</span>
+                        <h3>Select a subject to load students</h3>
+                    </div>
+                </div>
+                <div id="save-row" style="display:none;margin-top:16px"><button class="btn btn-primary btn-lg w-full"
+                        onclick="saveMarks()"><span class="material-icons-round">send</span> Submit for HT
+                        Approval</button></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="../../config.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../../assets/js/shared.js"></script>
+    <script>
+        let _subjectClassId = null;
+
+        (async () => {
+            const r = await initApp(['teacher']);
+            if (!r) return;
+            const { data: subs } = await db.from('subjects').select('id,name,class_id').eq('teacher_id', r.profile.id);
+            (subs || []).forEach(s => document.getElementById('sub-sel').insertAdjacentHTML('beforeend', `<option value="${s.id}" data-cls="${s.class_id}">${s.name}</option>`));
+        })();
+
+        async function loadStudents() {
+            const subSel = document.getElementById('sub-sel');
+            const subId = subSel.value;
+            const cls = subSel.options[subSel.selectedIndex]?.dataset?.cls;
+            _subjectClassId = subId;
+            const area = document.getElementById('marks-area');
+            document.getElementById('save-row').style.display = 'none';
+            if (!subId || !cls) { area.innerHTML = '<div class="empty"><span class="material-icons-round">grade</span><h3>Select a subject</h3></div>'; return; }
+            area.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+
+            const term = document.getElementById('term-sel').value;
+            const [stuRes, exRes] = await Promise.all([
+                db.from('students').select('id,full_name').eq('class_id', cls).eq('status', 'active').order('full_name'),
+                db.from('results').select('student_id,marks,status').eq('subject_id', subId).eq('term', term),
+            ]);
+            const students = stuRes.data || [];
+            const existing = Object.fromEntries((exRes.data || []).map(r => [r.student_id, r]));
+
+            if (!students.length) { area.innerHTML = '<div class="empty"><span class="material-icons-round">school</span><h3>No students in this class</h3></div>'; return; }
+            document.getElementById('save-row').style.display = 'block';
+
+            area.innerHTML = `<div class="card"><div class="card-header"><span class="material-icons-round" style="color:var(--primary)">grade</span><div class="card-title">Student Marks — ${students.length} students</div></div>
+    <div class="card-body" style="padding-top:8px">
+      ${students.map(s => {
+                const ex = existing[s.id];
+                const hasApproved = ex?.status === 'approved';
+                return `<div class="flex gap-10" style="padding:12px 0;border-bottom:1px solid var(--border-2);align-items:center">
+          <div class="tbl-avi">${initials(s.full_name)}</div>
+          <div style="flex:1"><div class="fw-700">${s.full_name}</div><div class="text-muted">${s.id}</div></div>
+          ${hasApproved
+                        ? `<span class="badge badge-success" style="font-size:13px">${ex.marks} marks — Approved ✓</span>`
+                        : `<div class="flex gap-6" style="align-items:center">
+                <input class="form-control" data-sid="${s.id}" type="number" min="0" max="999" style="width:100px" placeholder="—" value="${ex?.marks ?? ''}" ${ex?.status === 'pending' ? 'style="border-color:var(--warning)"' : ''}>
+                ${ex?.status === 'pending' ? '<span class="badge badge-warning">Pending</span>' : ''}
+              </div>`}
+        </div>`;
+            }).join('')}
+    </div></div>`;
+        }
+
+        async function saveMarks() {
+            const subId = document.getElementById('sub-sel').value;
+            const term = document.getElementById('term-sel').value;
+            const max = parseFloat(document.getElementById('max-marks').value) || 100;
+            const inputs = document.querySelectorAll('[data-sid]');
+            const rows = []; let skipped = 0;
+            inputs.forEach(inp => {
+                const m = parseFloat(inp.value);
+                if (isNaN(m) || m < 0) { skipped++; return; }
+                const g = getGrade(m, max);
+                rows.push({ student_id: inp.dataset.sid, subject_id: subId, marks: m, max_marks: max, grade_letter: g.l, term, academic_year: '2024/2025', status: 'pending', entered_by: window._currentProfile.id });
+            });
+            if (!rows.length) { showToast('No marks to save', 'error'); return; }
+            const { error } = await db.from('results').upsert(rows, { onConflict: 'student_id,subject_id,term,academic_year' });
+            if (error) { showToast('Error: ' + error.message, 'error'); return; }
+            showToast(`${rows.length} marks submitted for HT approval!${skipped ? ' (' + skipped + ' skipped)' : ''}`);
+            loadStudents();
+        }
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Parent Portal — Dashboard | Bluejay School</title>
+    <link rel="stylesheet" href="../../assets/css/main.css">
+</head>
+
+<body>
+    <div class="app">
+        <div id="sidebar-placeholder"></div>
+        <div class="main">
+            <header class="topbar">
+                <div class="topbar-left">
+                    <div class="topbar-title">Parent Portal</div>
+                    <div class="topbar-path">Parent / My Children</div>
+                </div>
+            </header>
+            <div class="page-content">
+                <div class="ph">
+                    <div>
+                        <h1 id="greeting">Welcome 👋</h1>
+                        <p>View your children's academic progress and fees</p>
+                    </div>
+                </div>
+
+                <div id="children-container">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                    </div>
+                </div>
+
+                <div class="card mt-20">
+                    <div class="card-header"><span class="material-icons-round"
+                            style="color:var(--primary)">campaign</span>
+                        <div class="card-title">School Notices</div>
+                    </div>
+                    <div class="card-body" id="notices">
+                        <div class="loading">
+                            <div class="spinner"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="../../config.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../../assets/js/shared.js"></script>
+    <script>
+        (async () => {
+            const r = await initApp(['parent']);
+            if (!r) return;
+            document.getElementById('greeting').textContent = 'Welcome, ' + r.profile.full_name.split(' ')[0] + ' 👋';
+
+            const { data: links } = await db.from('parent_students').select('student_id').eq('parent_id', r.profile.id);
+            const ids = (links || []).map(l => l.student_id);
+            const cc = document.getElementById('children-container');
+
+            if (!ids.length) {
+                cc.innerHTML = '<div class="card"><div class="card-body"><div class="empty"><span class="material-icons-round">child_care</span><h3>No children linked</h3><p>Contact school admin to link your children to this account.</p></div></div></div>';
+            } else {
+                const { data: children } = await db.from('students').select('*,classes(name,section)').in('id', ids);
+                cc.innerHTML = (children || []).map(ch => {
+                    const paid = parseFloat(ch.fees_paid || 0), total = parseFloat(ch.fees_total || 0);
+                    const pct = total > 0 ? Math.round((paid / total) * 100) : 0;
+                    return `<div class="card mb-20">
+        <div class="card-header">
+          <div class="tbl-avi" style="width:44px;height:44px;font-size:18px">${initials(ch.full_name)}</div>
+          <div style="flex:1">
+            <div style="font-size:16px;font-weight:800">${ch.full_name}</div>
+            <div class="text-muted">Class ${ch.classes?.name || '—'} ${ch.classes?.section || ''} · ID: ${ch.id}</div>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="grid-3">
+            <div style="background:var(--primary-light);border-radius:10px;padding:16px;text-align:center">
+              <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--primary);margin-bottom:4px">Admission</div>
+              <div style="font-size:15px;font-weight:800">${formatDate(ch.admission_date)}</div>
+            </div>
+            <div style="background:${pct >= 100 ? 'var(--success-light)' : pct > 0 ? 'var(--warning-light)' : 'var(--danger-light)'};border-radius:10px;padding:16px;text-align:center">
+              <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:${pct >= 100 ? 'var(--success)' : pct > 0 ? 'var(--warning)' : 'var(--danger)'};margin-bottom:4px">Fees Status</div>
+              <div style="font-size:15px;font-weight:800">${formatMoney(paid)} / ${formatMoney(total)}</div>
+              <div class="prog mt-6"><div class="prog-fill ${pct >= 100 ? 'green' : pct > 0 ? 'orange' : 'red'}" style="width:${pct}%"></div></div>
+            </div>
+            <div style="background:var(--info-light);border-radius:10px;padding:16px;text-align:center">
+              <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--info);margin-bottom:4px">Gender</div>
+              <div style="font-size:15px;font-weight:800">${ch.gender || '—'}</div>
+            </div>
+          </div>
+
+          <div class="mt-20">
+            <div class="card-title" style="margin-bottom:12px">📚 Latest Results</div>
+            <div id="results-${ch.id}"><div class="loading" style="min-height:60px"><div class="spinner"></div></div></div>
+          </div>
+
+          <div class="mt-20">
+            <div class="card-title" style="margin-bottom:12px">📅 Recent Attendance</div>
+            <div id="att-${ch.id}"><div class="loading" style="min-height:60px"><div class="spinner"></div></div></div>
+          </div>
+        </div>
+      </div>`;
+                }).join('');
+
+                // Load results & attendance per child
+                for (const ch of (children || [])) {
+                    const { data: res } = await db.from('results').select('*,subjects(name)').eq('student_id', ch.id).eq('status', 'approved').order('created_at', { ascending: false }).limit(6);
+                    const rEl = document.getElementById(`results-${ch.id}`);
+                    if (!res?.length) rEl.innerHTML = '<p class="text-muted">No results available yet.</p>';
+                    else rEl.innerHTML = `<table class="tbl"><thead><tr><th>Subject</th><th>Marks</th><th>Max</th><th>Grade</th><th>Term</th></tr></thead><tbody>${res.map(r => { const g = getGrade(r.marks, r.max_marks); return `<tr><td>${r.subjects?.name || '—'}</td><td>${r.marks}</td><td>${r.max_marks}</td><td><span class="badge badge-${g.c}">${g.l}</span></td><td>${r.term}</td></tr>`; }).join('')}</tbody></table>`;
+
+                    const { data: att } = await db.from('attendance').select('date,status').eq('student_id', ch.id).order('date', { ascending: false }).limit(14);
+                    const aEl = document.getElementById(`att-${ch.id}`);
+                    if (!att?.length) aEl.innerHTML = '<p class="text-muted">No attendance records yet.</p>';
+                    else aEl.innerHTML = `<div style="display:flex;flex-wrap:wrap;gap:8px">${att.map(a => `<div style="padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;background:${a.status === 'present' ? 'var(--success-light)' : a.status === 'absent' ? 'var(--danger-light)' : 'var(--warning-light)'};color:${a.status === 'present' ? 'var(--success)' : a.status === 'absent' ? 'var(--danger)' : 'var(--warning)'}">${formatDate(a.date)} · ${a.status}</div>`).join('')}</div>`;
+                }
+            }
+
+            // Notices
+            const { data: notices } = await db.from('notices').select('*').order('created_at', { ascending: false }).limit(5);
+            const nEl = document.getElementById('notices');
+            if (!notices?.length) nEl.innerHTML = '<div class="empty"><span class="material-icons-round">campaign</span><h3>No notices</h3></div>';
+            else nEl.innerHTML = notices.map(n => `<div class="notice-item"><div class="notice-date">${formatDate(n.created_at)}</div><div class="notice-title">${n.title}</div><div class="notice-body">${n.content || ''}</div></div>`).join('');
+        })();
+    </script>
+</body>
+
+</html>

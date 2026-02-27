@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teacher — Dashboard | Bluejay School</title>
+    <link rel="stylesheet" href="../../assets/css/main.css">
+</head>
+
+<body>
+    <div class="app">
+        <div id="sidebar-placeholder"></div>
+        <div class="main">
+            <header class="topbar">
+                <div class="topbar-left">
+                    <div class="topbar-title">Teacher Dashboard</div>
+                    <div class="topbar-path">Teacher / Dashboard</div>
+                </div>
+                <div class="topbar-right">
+                    <button class="tb-btn" onclick="window.location.href='../../shared/noticeboard.html'"><span
+                            class="material-icons-round">campaign</span></button>
+                </div>
+            </header>
+            <div class="page-content">
+                <div class="ph">
+                    <div>
+                        <h1 id="greeting">Good Morning 👋</h1>
+                        <p>Your teaching overview for today</p>
+                    </div>
+                    <div class="ph-actions">
+                        <a href="attendance.html" class="btn btn-primary"><span
+                                class="material-icons-round">fact_check</span> Mark Attendance</a>
+                    </div>
+                </div>
+
+                <div class="stat-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon si-blue"><span class="material-icons-round">class</span></div>
+                        <div class="stat-info">
+                            <div class="stat-label">My Classes</div>
+                            <div class="stat-value" id="s-cls">—</div>
+                            <div class="stat-meta">Assigned classes</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon si-green"><span class="material-icons-round">school</span></div>
+                        <div class="stat-info">
+                            <div class="stat-label">My Students</div>
+                            <div class="stat-value" id="s-stu">—</div>
+                            <div class="stat-meta">Across all classes</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon si-orange"><span class="material-icons-round">menu_book</span></div>
+                        <div class="stat-info">
+                            <div class="stat-label">My Subjects</div>
+                            <div class="stat-value" id="s-sub">—</div>
+                            <div class="stat-meta">Assigned</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon si-purple"><span class="material-icons-round">pending_actions</span></div>
+                        <div class="stat-info">
+                            <div class="stat-label">Pending Marks</div>
+                            <div class="stat-value" id="s-gr">—</div>
+                            <div class="stat-meta">Awaiting HT approval</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid-2 mt-20">
+                    <div class="card">
+                        <div class="card-header"><span class="material-icons-round"
+                                style="color:var(--primary)">schedule</span>
+                            <div class="card-title">Today's Timetable</div><a href="timetable.html"
+                                class="btn btn-sm btn-outline">Full Schedule</a>
+                        </div>
+                        <div class="card-body" id="today-tt">
+                            <div class="loading">
+                                <div class="spinner"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header"><span class="material-icons-round"
+                                style="color:var(--success)">people</span>
+                            <div class="card-title">My Students</div><a href="attendance.html"
+                                class="btn btn-sm btn-outline">Take Attendance</a>
+                        </div>
+                        <div class="card-body" id="my-students">
+                            <div class="loading">
+                                <div class="spinner"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card mt-20">
+                    <div class="card-header"><span class="material-icons-round"
+                            style="color:var(--warning)">grade</span>
+                        <div class="card-title">Recent Marks Submitted</div><a href="grades.html"
+                            class="btn btn-sm btn-primary"><span class="material-icons-round">add</span> Enter Marks</a>
+                    </div>
+                    <div class="card-body" id="recent-marks">
+                        <div class="loading">
+                            <div class="spinner"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="../../config.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../../assets/js/shared.js"></script>
+    <script>
+        (async () => {
+            const r = await initApp(['teacher']);
+            if (!r) return;
+            const hr = new Date().getHours();
+            document.getElementById('greeting').textContent =
+                (hr < 12 ? 'Good Morning ☀️' : hr < 17 ? 'Good Afternoon 🌤' : 'Good Evening 🌙') +
+                ', ' + r.profile.full_name.split(' ')[0];
+
+            const tid = r.profile.id;
+            const { data: subjects } = await db.from('subjects').select('id,name,class_id,classes(name,section)').eq('teacher_id', tid);
+            const subs = subjects || [];
+            const classIds = [...new Set(subs.map(s => s.class_id).filter(Boolean))];
+
+            document.getElementById('s-cls').textContent = classIds.length;
+            document.getElementById('s-sub').textContent = subs.length;
+
+            // Count students
+            let totalStudents = 0;
+            if (classIds.length) {
+                const { count } = await db.from('students').select('*', { count: 'exact', head: true }).eq('status', 'active').in('class_id', classIds);
+                totalStudents = count || 0;
+            }
+            document.getElementById('s-stu').textContent = totalStudents;
+
+            const { count: gr } = await db.from('results').select('*', { count: 'exact', head: true }).eq('entered_by', tid).eq('status', 'pending');
+            document.getElementById('s-gr').textContent = gr || 0;
+
+            // Today's timetable
+            const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+            const today = days[new Date().getDay()];
+            const ttEl = document.getElementById('today-tt');
+            const { data: tt } = await db.from('timetable').select('*,subjects(name),classes(name,section)').eq('teacher_id', tid).eq('day_of_week', today).order('start_time');
+            if (!tt?.length) ttEl.innerHTML = `<div class="empty"><span class="material-icons-round">event_available</span><h3>No classes today (${today})</h3></div>`;
+            else ttEl.innerHTML = tt.map(t => `<div class="flex gap-10" style="padding:10px 0;border-bottom:1px solid var(--border-2);align-items:center"><span class="material-icons-round" style="color:var(--primary);font-size:19px">access_time</span><div style="flex:1"><div class="fw-700">${t.subjects?.name || '—'}</div><div class="text-muted">Class ${t.classes?.name || '—'} ${t.classes?.section || ''}</div></div><span class="badge badge-primary">${t.start_time?.slice(0, 5) || '—'} – ${t.end_time?.slice(0, 5) || '—'}</span></div>`).join('');
+
+            // Students list
+            const stuEl = document.getElementById('my-students');
+            if (!classIds.length) { stuEl.innerHTML = '<div class="empty"><span class="material-icons-round">school</span><h3>No classes assigned</h3></div>'; }
+            else {
+                const { data: stus } = await db.from('students').select('id,full_name,class_id,classes(name,section)').eq('status', 'active').in('class_id', classIds).limit(8);
+                stuEl.innerHTML = (stus || []).map(s => `<div class="flex gap-10" style="padding:9px 0;border-bottom:1px solid var(--border-2);align-items:center"><div class="tbl-avi">${initials(s.full_name)}</div><div style="flex:1"><div class="fw-700">${s.full_name}</div><div class="text-muted">Class ${s.classes?.name || '—'}</div></div></div>`).join('') + `<div style="padding-top:10px"><a href="attendance.html" class="btn btn-outline w-full">Mark Attendance</a></div>`;
+            }
+
+            // Recent marks
+            const mEl = document.getElementById('recent-marks');
+            const { data: marks } = await db.from('results').select('*,students(full_name),subjects(name)').eq('entered_by', tid).order('created_at', { ascending: false }).limit(6);
+            if (!marks?.length) mEl.innerHTML = '<div class="empty"><span class="material-icons-round">grade</span><h3>No marks entered yet</h3></div>';
+            else mEl.innerHTML = `<table class="tbl"><thead><tr><th>Student</th><th>Subject</th><th>Marks</th><th>Grade</th><th>Status</th></tr></thead><tbody>${marks.map(m => { const g = getGrade(m.marks, m.max_marks); return `<tr><td>${m.students?.full_name || '—'}</td><td>${m.subjects?.name || '—'}</td><td>${m.marks}/${m.max_marks}</td><td><span class="badge badge-${g.c}">${g.l}</span></td><td><span class="badge ${m.status === 'approved' ? 'badge-success' : m.status === 'rejected' ? 'badge-danger' : 'badge-warning'}">${m.status}</span></td></tr>`; }).join('')}</tbody></table>`;
+        })();
+    </script>
+</body>
+
+</html>

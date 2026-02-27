@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Students | Bluejay School</title>
+    <link rel="stylesheet" href="../../assets/css/main.css">
+</head>
+
+<body>
+    <div class="app">
+        <div id="sidebar-placeholder"></div>
+        <div class="main">
+            <header class="topbar">
+                <div class="topbar-left">
+                    <div class="topbar-title">Student Management</div>
+                    <div class="topbar-path">Admin / Students</div>
+                </div>
+            </header>
+            <div class="page-content">
+                <div class="ph">
+                    <div>
+                        <h1>Students</h1>
+                        <p>Add and manage student records. New students require System Admin approval.</p>
+                    </div>
+                    <div class="ph-actions">
+                        <button class="btn btn-primary" onclick="openModal('add-modal')"><span
+                                class="material-icons-round">person_add</span> Add Student</button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <span class="material-icons-round" style="color:var(--primary)">school</span>
+                        <div class="card-title">All Students</div>
+                        <div class="tabs" style="margin:0">
+                            <button class="tab active" onclick="filterStatus('all',this)">All</button>
+                            <button class="tab" onclick="filterStatus('active',this)">Active</button>
+                            <button class="tab" onclick="filterStatus('pending',this)">Pending</button>
+                        </div>
+                    </div>
+                    <div class="card-body" style="padding:16px">
+                        <div class="filter-bar">
+                            <div class="search-box"><span class="material-icons-round">search</span><input type="text"
+                                    placeholder="Search by name or ID…" oninput="searchStudents(this.value)"></div>
+                            <select class="form-control" style="width:180px" id="class-filter"
+                                onchange="loadStudents()">
+                                <option value="">All Classes</option>
+                            </select>
+                        </div>
+                        <div id="student-list">
+                            <div class="loading">
+                                <div class="spinner"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ADD STUDENT MODAL -->
+    <div class="overlay" id="add-modal">
+        <div class="modal modal-lg">
+            <div class="modal-header">
+                <span class="material-icons-round" style="color:var(--primary)">person_add</span>
+                <div class="modal-title">Add New Student</div>
+                <button class="modal-close" onclick="closeModal('add-modal')"><span
+                        class="material-icons-round">close</span></button>
+            </div>
+            <div class="modal-body">
+                <div class="form-row form-row-2">
+                    <div class="form-group"><label class="form-label">Full Name <span class="req">*</span></label><input
+                            class="form-control" id="f-name" placeholder="Student's full name"></div>
+                    <div class="form-group"><label class="form-label">Gender <span class="req">*</span></label><select
+                            class="form-control" id="f-gender">
+                            <option value="">Select…</option>
+                            <option>Male</option>
+                            <option>Female</option>
+                        </select></div>
+                    <div class="form-group"><label class="form-label">Date of Birth</label><input class="form-control"
+                            id="f-dob" type="date"></div>
+                    <div class="form-group"><label class="form-label">Admission Date</label><input class="form-control"
+                            id="f-admit" type="date" value=""></div>
+                    <div class="form-group"><label class="form-label">Class <span class="req">*</span></label><select
+                            class="form-control" id="f-class">
+                            <option value="">Select class…</option>
+                        </select></div>
+                    <div class="form-group"><label class="form-label">Section</label><select class="form-control"
+                            id="f-section">
+                            <option value="">Select…</option>
+                            <option>A</option>
+                            <option>B</option>
+                            <option>C</option>
+                            <option>D</option>
+                        </select></div>
+                </div>
+                <div style="border-top:1px solid var(--border);padding-top:16px;margin-top:4px">
+                    <div style="font-size:13px;font-weight:700;margin-bottom:12px;color:var(--text-2)">👨‍👩‍👧 Parent /
+                        Guardian Information</div>
+                    <div class="form-row form-row-2">
+                        <div class="form-group"><label class="form-label">Parent/Guardian Name</label><input
+                                class="form-control" id="f-pname" placeholder="Full name"></div>
+                        <div class="form-group"><label class="form-label">Phone Number</label><input
+                                class="form-control" id="f-pphone" placeholder="+260…"></div>
+                        <div class="form-group"><label class="form-label">Email (for Parent Portal)</label><input
+                                class="form-control" id="f-pemail" type="email" placeholder="parent@email.com"></div>
+                        <div class="form-group"><label class="form-label">Occupation</label><input class="form-control"
+                                id="f-pocc" placeholder="e.g. Teacher, Farmer"></div>
+                    </div>
+                </div>
+                <div style="border-top:1px solid var(--border);padding-top:16px;margin-top:4px">
+                    <div style="font-size:13px;font-weight:700;margin-bottom:12px;color:var(--text-2)">💰 Negotiated
+                        School Fees</div>
+                    <div class="form-row form-row-2">
+                        <div class="form-group"><label class="form-label">Annual Fees Amount (K) <span
+                                    class="req">*</span></label><input class="form-control" id="f-fees" type="number"
+                                min="0" placeholder="e.g. 5000">
+                            <div class="form-hint">Enter the agreed annual fee for this student's family</div>
+                        </div>
+                        <div class="form-group"><label class="form-label">Notes</label><textarea class="form-control"
+                                id="f-notes" placeholder="Any additional notes…" style="height:60px"></textarea></div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="closeModal('add-modal')">Cancel</button>
+                <button class="btn btn-primary" onclick="saveStudent()"><span class="material-icons-round">save</span>
+                    Submit for Approval</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- VIEW STUDENT MODAL -->
+    <div class="overlay" id="view-modal">
+        <div class="modal modal-lg">
+            <div class="modal-header">
+                <div class="modal-title" id="view-title">Student Details</div><button class="modal-close"
+                    onclick="closeModal('view-modal')"><span class="material-icons-round">close</span></button>
+            </div>
+            <div class="modal-body" id="view-body"></div>
+        </div>
+    </div>
+
+    <!-- EDIT FEES MODAL -->
+    <div class="overlay" id="fees-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <div class="modal-title">Update Negotiated Fees</div><button class="modal-close"
+                    onclick="closeModal('fees-modal')"><span class="material-icons-round">close</span></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="ef-id">
+                <div class="form-group"><label class="form-label">New Annual Fee Amount (K)</label><input
+                        class="form-control" id="ef-amount" type="number" min="0"></div>
+            </div>
+            <div class="modal-footer"><button class="btn btn-outline"
+                    onclick="closeModal('fees-modal')">Cancel</button><button class="btn btn-primary"
+                    onclick="updateFees()">Update</button></div>
+        </div>
+    </div>
+
+    <script src="../../config.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../../assets/js/shared.js"></script>
+    <script>
+        let _allStudents = [], _statusFilter = 'all', _search = '';
+
+        (async () => {
+            await initApp(['admin']);
+            document.getElementById('f-admit').value = new Date().toISOString().split('T')[0];
+            await loadClasses();
+            await loadStudents();
+        })();
+
+        async function loadClasses() {
+            const { data } = await db.from('classes').select('id,name,section').order('name');
+            const selects = [document.getElementById('f-class'), document.getElementById('class-filter')];
+            (data || []).forEach(c => {
+                const opt = `<option value="${c.id}">${c.name} ${c.section || ''}</option>`;
+                selects.forEach(s => s.insertAdjacentHTML('beforeend', opt));
+            });
+        }
+
+        function filterStatus(s, btn) {
+            document.querySelectorAll('.tabs .tab').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            _statusFilter = s;
+            renderStudents();
+        }
+
+        function searchStudents(v) { _search = v.toLowerCase(); renderStudents(); }
+
+        async function loadStudents() {
+            let q = db.from('students').select('*,classes(name,section)').order('created_at', { ascending: false });
+            const cf = document.getElementById('class-filter')?.value;
+            if (cf) q = q.eq('class_id', cf);
+            const { data } = await q;
+            _allStudents = data || [];
+            renderStudents();
+        }
+
+        function renderStudents() {
+            const el = document.getElementById('student-list');
+            let list = _allStudents;
+            if (_statusFilter !== 'all') list = list.filter(s => s.status === _statusFilter);
+            if (_search) list = list.filter(s => s.full_name.toLowerCase().includes(_search) || s.id.toLowerCase().includes(_search));
+
+            if (!list.length) { el.innerHTML = '<div class="empty"><span class="material-icons-round">school</span><h3>No students found</h3></div>'; return; }
+
+            el.innerHTML = `<div class="tbl-wrap"><table class="tbl">
+    <thead><tr><th>Student</th><th>ID</th><th>Class</th><th>Fees Total</th><th>Fees Paid</th><th>Status</th><th>Actions</th></tr></thead>
+    <tbody>${list.map(s => {
+                const paid = parseFloat(s.fees_paid || 0), total = parseFloat(s.fees_total || 0);
+                return `<tr>
+        <td><div class="tbl-avatar"><div class="tbl-avi">${initials(s.full_name)}</div><div><div class="tbl-name">${s.full_name}</div><div class="tbl-sub">${s.gender || '—'}</div></div></div></td>
+        <td><code>${s.id}</code></td>
+        <td>${s.classes?.name || '—'} ${s.classes?.section || ''}</td>
+        <td>${formatMoney(total)}</td>
+        <td>${feeStatus(paid, total)}</td>
+        <td><span class="badge ${s.status === 'active' ? 'badge-success' : s.status === 'pending' ? 'badge-warning' : s.status === 'rejected' ? 'badge-danger' : 'badge-neutral'}">${s.status}</span></td>
+        <td><div class="tbl-actions">
+          <button class="btn btn-sm btn-outline" onclick="viewStudent('${s.id}')"><span class="material-icons-round">visibility</span></button>
+          <button class="btn btn-sm btn-primary" onclick="editFees('${s.id}','${total}')"><span class="material-icons-round">edit</span> Fees</button>
+        </div></td>
+      </tr>`;
+            }).join('')}
+    </tbody></table></div>`;
+        }
+
+        async function saveStudent() {
+            const name = document.getElementById('f-name').value.trim();
+            const gender = document.getElementById('f-gender').value;
+            const cls = document.getElementById('f-class').value;
+            const fees = document.getElementById('f-fees').value;
+            if (!name || !gender || !cls || !fees) { showToast('Please fill in all required fields', 'error'); return; }
+
+            const id = genAdmissionNo();
+            const { error } = await db.from('students').insert({
+                id, full_name: name, gender,
+                date_of_birth: document.getElementById('f-dob').value || null,
+                admission_date: document.getElementById('f-admit').value || new Date().toISOString().split('T')[0],
+                class_id: cls,
+                section: document.getElementById('f-section').value || null,
+                parent_name: document.getElementById('f-pname').value || null,
+                parent_phone: document.getElementById('f-pphone').value || null,
+                parent_email: document.getElementById('f-pemail').value || null,
+                parent_occupation: document.getElementById('f-pocc').value || null,
+                fees_total: parseFloat(fees), fees_paid: 0,
+                status: 'pending',
+                created_by: window._currentProfile.id,
+            });
+
+            if (error) { showToast('Error: ' + error.message, 'error'); return; }
+            await logActivity('Added student', 'student', id, `${name} submitted for approval`);
+            showToast(`Student "${name}" submitted for System Admin approval!`, 'success');
+            closeModal('add-modal'); loadStudents();
+        }
+
+        async function viewStudent(id) {
+            const s = _allStudents.find(s => s.id === id);
+            if (!s) return;
+            document.getElementById('view-title').textContent = s.full_name;
+            document.getElementById('view-body').innerHTML = `
+    <div class="form-row form-row-2">
+      ${row('ID', s.id)} ${row('Gender', s.gender)}
+      ${row('Date of Birth', formatDate(s.date_of_birth))} ${row('Admission', formatDate(s.admission_date))}
+      ${row('Class', s.classes?.name + ' ' + (s.classes?.section || ''))} ${row('Section', s.section || '—')}
+      ${row('Parent', s.parent_name)} ${row('Parent Phone', s.parent_phone)}
+      ${row('Parent Email', s.parent_email)} ${row('Parent Occupation', s.parent_occupation)}
+      ${row('Annual Fees', formatMoney(s.fees_total))} ${row('Fees Paid', formatMoney(s.fees_paid))}
+    </div>`;
+            openModal('view-modal');
+        }
+
+        function row(l, v) { return `<div class="form-group"><label class="form-label">${l}</label><div style="font-size:14px;font-weight:600;padding:9px 0">${v || '—'}</div></div>`; }
+
+        function editFees(id, current) {
+            document.getElementById('ef-id').value = id;
+            document.getElementById('ef-amount').value = current;
+            openModal('fees-modal');
+        }
+        async function updateFees() {
+            const id = document.getElementById('ef-id').value;
+            const amt = parseFloat(document.getElementById('ef-amount').value);
+            if (isNaN(amt)) { showToast('Invalid amount', 'error'); return; }
+            await db.from('students').update({ fees_total: amt }).eq('id', id);
+            await logActivity('Updated fees', 'student', id, `Fees set to ${formatMoney(amt)}`);
+            showToast('Fees updated!'); closeModal('fees-modal'); loadStudents();
+        }
+    </script>
+</body>
+
+</html>

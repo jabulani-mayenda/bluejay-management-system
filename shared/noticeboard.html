@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notice Board | Bluejay School</title>
+    <link rel="stylesheet" href="../assets/css/main.css">
+</head>
+
+<body>
+    <div class="app">
+        <div id="sidebar-placeholder"></div>
+        <div class="main">
+            <header class="topbar">
+                <div class="topbar-left">
+                    <div class="topbar-title">Notice Board</div>
+                    <div class="topbar-path">School / Announcements</div>
+                </div>
+            </header>
+            <div class="page-content">
+                <div class="ph">
+                    <div>
+                        <h1>📢 Notice Board</h1>
+                        <p>School-wide announcements and notices</p>
+                    </div>
+                    <div class="ph-actions" id="post-btn-wrap"></div>
+                </div>
+
+                <div class="grid-2">
+                    <div>
+                        <div id="notice-list">
+                            <div class="loading">
+                                <div class="spinner"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="post-form-wrap"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="../config.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../assets/js/shared.js"></script>
+    <script>
+        let _profile;
+        const CAN_POST = ['system_admin', 'admin', 'head_teacher', 'teacher'];
+
+        (async () => {
+            const r = await initApp([]);
+            if (!r) return;
+            _profile = r.profile;
+
+            if (CAN_POST.includes(_profile.role)) {
+                document.getElementById('post-form-wrap').innerHTML = `
+      <div class="card" style="position:sticky;top:80px">
+        <div class="card-header"><span class="material-icons-round" style="color:var(--primary)">edit_note</span><div class="card-title">Post a Notice</div></div>
+        <div class="card-body">
+          <div class="form-group"><label class="form-label">Title <span class="req">*</span></label><input class="form-control" id="n-title" placeholder="Notice title…"></div>
+          <div class="form-group"><label class="form-label">Content</label><textarea class="form-control" id="n-content" placeholder="Write your announcement…" style="height:120px"></textarea></div>
+          <div class="form-group"><label class="form-label">Visible To</label><select class="form-control" id="n-vis"><option value="all">Everyone</option><option value="staff">Staff Only</option><option value="parents">Parents Only</option></select></div>
+          <button class="btn btn-primary w-full mt-20" onclick="postNotice()"><span class="material-icons-round">send</span> Post Notice</button>
+        </div>
+      </div>`;
+            }
+            loadNotices();
+        })();
+
+        async function loadNotices() {
+            const el = document.getElementById('notice-list');
+            const { data } = await db.from('notices').select('*,profiles!notices_posted_by_fkey(full_name,role)').order('created_at', { ascending: false });
+            if (!data?.length) {
+                el.innerHTML = '<div class="empty"><span class="material-icons-round">campaign</span><h3>No notices yet</h3><p>Be the first to post an announcement!</p></div>';
+                return;
+            }
+            el.innerHTML = data.map(n => {
+                const roleColor = ROLE_COLORS?.[n.profiles?.role] || 'var(--primary)';
+                const canDelete = _profile?.role === 'system_admin' || n.posted_by === _profile?.id;
+                return `<div class="card mb-20">
+      <div class="card-body">
+        <div class="flex-between mb-6" style="align-items:flex-start">
+          <div style="font-size:18px;font-weight:800">${n.title}</div>
+          ${canDelete ? `<button class="btn btn-sm btn-ghost" onclick="deleteNotice('${n.id}')" style="color:var(--danger)"><span class="material-icons-round">delete</span></button>` : ''}
+        </div>
+        <div style="font-size:13.5px;color:var(--text-2);line-height:1.7;margin-bottom:14px">${(n.content || '').replace(/\n/g, '<br>')}</div>
+        <div class="flex gap-10" style="font-size:12px;color:var(--text-3);align-items:center">
+          <span style="background:${roleColor}20;color:${roleColor};padding:2px 10px;border-radius:20px;font-weight:600">${n.profiles?.full_name || 'Admin'}</span>
+          <span>·</span>
+          <span>${timeAgo(n.created_at)}</span>
+          ${n.visible_to !== 'all' ? `<span class="badge badge-neutral">${n.visible_to} only</span>` : ''}
+        </div>
+      </div>
+    </div>`;
+            }).join('');
+        }
+
+        async function postNotice() {
+            const title = document.getElementById('n-title').value.trim();
+            const content = document.getElementById('n-content').value.trim();
+            if (!title) { showToast('Title required', 'error'); return; }
+            const { error } = await db.from('notices').insert({ title, content, visible_to: document.getElementById('n-vis').value, posted_by: _profile.id });
+            if (error) { showToast('Error: ' + error.message, 'error'); return; }
+            document.getElementById('n-title').value = ''; document.getElementById('n-content').value = '';
+            showToast('Notice posted!'); loadNotices();
+        }
+
+        async function deleteNotice(id) {
+            confirmAction('Delete this notice?', async () => {
+                await db.from('notices').delete().eq('id', id);
+                showToast('Notice deleted', 'error'); loadNotices();
+            });
+        }
+
+        // Fix shared.js sidebar path for shared/ directory
+        window.getRootPath = function () { return '../'; };
+    </script>
+</body>
+
+</html>

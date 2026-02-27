@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Results | Bluejay School</title>
+    <link rel="stylesheet" href="../../assets/css/main.css">
+</head>
+
+<body>
+    <div class="app">
+        <div id="sidebar-placeholder"></div>
+        <div class="main">
+            <header class="topbar">
+                <div class="topbar-left">
+                    <div class="topbar-title">Results Management</div>
+                    <div class="topbar-path">Head Teacher / Results</div>
+                </div>
+                <div class="topbar-right">
+                    <button class="btn btn-sm btn-outline" onclick="exportResults()"><span
+                            class="material-icons-round">download</span> Export</button>
+                    <button class="btn btn-sm btn-outline" onclick="printReport()"><span
+                            class="material-icons-round">print</span> Print</button>
+                </div>
+            </header>
+            <div class="page-content">
+                <div class="ph">
+                    <div>
+                        <h1>Results & Grades</h1>
+                        <p>Enter, view, and approve student results</p>
+                    </div>
+                    <div class="ph-actions"><button class="btn btn-primary" onclick="openModal('add-modal')"><span
+                                class="material-icons-round">add</span> Enter Results</button></div>
+                </div>
+
+                <div class="tabs">
+                    <button class="tab active" onclick="setTab('pending',this)">Pending Approval</button>
+                    <button class="tab" onclick="setTab('approved',this)">Approved Results</button>
+                    <button class="tab" onclick="setTab('enter',this)">Bulk Entry</button>
+                </div>
+
+                <div id="tab-pending">
+                    <div class="card">
+                        <div class="card-header"><span class="material-icons-round"
+                                style="color:var(--warning)">pending_actions</span>
+                            <div class="card-title">Results Awaiting Approval</div>
+                        </div>
+                        <div class="card-body" style="padding:16px">
+                            <div id="pending-list">
+                                <div class="loading">
+                                    <div class="spinner"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="tab-approved" style="display:none">
+                    <div class="card">
+                        <div class="card-header"><span class="material-icons-round"
+                                style="color:var(--success)">check_circle</span>
+                            <div class="card-title">Approved Results</div>
+                            <select class="form-control" style="width:160px" id="cls-filter" onchange="loadApproved()">
+                                <option value="">All Classes</option>
+                            </select>
+                            <select class="form-control" style="width:140px" id="term-filter" onchange="loadApproved()">
+                                <option value="">All Terms</option>
+                                <option>Term 1</option>
+                                <option>Term 2</option>
+                                <option>Term 3</option>
+                            </select>
+                        </div>
+                        <div class="card-body" style="padding:16px">
+                            <div id="approved-list">
+                                <div class="loading">
+                                    <div class="spinner"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="tab-enter" style="display:none">
+                    <div class="card">
+                        <div class="card-header"><span class="material-icons-round"
+                                style="color:var(--primary)">edit_note</span>
+                            <div class="card-title">Bulk Grade Entry</div>
+                        </div>
+                        <div class="card-body">
+                            <div class="form-row form-row-3 mb-20">
+                                <div class="form-group"><label class="form-label">Class</label><select
+                                        class="form-control" id="bulk-cls" onchange="loadBulkStudents()">
+                                        <option value="">Select class…</option>
+                                    </select></div>
+                                <div class="form-group"><label class="form-label">Subject</label><select
+                                        class="form-control" id="bulk-sub">
+                                        <option value="">Select subject…</option>
+                                    </select></div>
+                                <div class="form-group"><label class="form-label">Term</label><select
+                                        class="form-control" id="bulk-term">
+                                        <option>Term 1</option>
+                                        <option>Term 2</option>
+                                        <option>Term 3</option>
+                                    </select></div>
+                            </div>
+                            <div id="bulk-table">
+                                <p class="text-muted">Select a class to load students.</p>
+                            </div>
+                            <div id="bulk-actions" style="display:none;margin-top:16px"><button class="btn btn-primary"
+                                    onclick="saveBulkResults()"><span class="material-icons-round">save</span> Save All
+                                    Results</button></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Single Entry Modal -->
+    <div class="overlay" id="add-modal">
+        <div class="modal">
+            <div class="modal-header"><span class="material-icons-round" style="color:var(--primary)">grade</span>
+                <div class="modal-title">Enter Student Result</div><button class="modal-close"
+                    onclick="closeModal('add-modal')"><span class="material-icons-round">close</span></button>
+            </div>
+            <div class="modal-body">
+                <div class="form-row form-row-2">
+                    <div class="form-group"><label class="form-label">Class</label><select class="form-control"
+                            id="a-cls" onchange="loadSubjects();loadStudentsForClass()">
+                            <option value="">Select…</option>
+                        </select></div>
+                    <div class="form-group"><label class="form-label">Subject</label><select class="form-control"
+                            id="a-sub">
+                            <option value="">Select class first…</option>
+                        </select></div>
+                    <div class="form-group"><label class="form-label">Student</label><select class="form-control"
+                            id="a-stu">
+                            <option value="">Select class first…</option>
+                        </select></div>
+                    <div class="form-group"><label class="form-label">Term</label><select class="form-control"
+                            id="a-term">
+                            <option>Term 1</option>
+                            <option>Term 2</option>
+                            <option>Term 3</option>
+                        </select></div>
+                    <div class="form-group"><label class="form-label">Marks <span class="req">*</span></label><input
+                            class="form-control" id="a-marks" type="number" min="0" max="100" placeholder="0"
+                            oninput="previewGrade()"></div>
+                    <div class="form-group"><label class="form-label">Out of</label><input class="form-control"
+                            id="a-max" type="number" value="100" min="1" oninput="previewGrade()"></div>
+                </div>
+                <div id="grade-preview"
+                    style="text-align:center;padding:12px;border-radius:10px;background:var(--bg);margin-top:8px;display:none">
+                    <div style="font-size:12px;color:var(--text-3);margin-bottom:4px">Grade Preview</div>
+                    <span id="grade-badge"></span>
+                </div>
+                <div class="form-group mt-20"><label class="form-label">Comments</label><textarea class="form-control"
+                        id="a-comments" placeholder="Optional teacher comments…" style="height:60px"></textarea></div>
+            </div>
+            <div class="modal-footer"><button class="btn btn-outline"
+                    onclick="closeModal('add-modal')">Cancel</button><button class="btn btn-primary"
+                    onclick="saveSingle()"><span class="material-icons-round">save</span> Save Result</button></div>
+        </div>
+    </div>
+
+    <script src="../../config.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../../assets/js/shared.js"></script>
+    <script>
+        let _classes = [], _role = '';
+
+        function setTab(t, btn) {
+            document.querySelectorAll('.tabs .tab').forEach(b => b.classList.remove('active')); btn.classList.add('active');
+            ['pending', 'approved', 'enter'].forEach(x => document.getElementById('tab-' + x).style.display = x === t ? '' : 'none');
+            if (t === 'approved') loadApproved();
+            if (t === 'enter') loadBulkClasses();
+        }
+
+        (async () => {
+            const r = await initApp(['head_teacher', 'teacher']);
+            if (!r) return;
+            _role = r.profile.role;
+            const { data } = await db.from('classes').select('id,name,section').order('name');
+            _classes = data || [];
+            _classes.forEach(c => {
+                const o = `<option value="${c.id}">${c.name} ${c.section || ''}</option>`;
+                ['a-cls', 'cls-filter', 'bulk-cls'].forEach(id => { const el = document.getElementById(id); if (el) el.insertAdjacentHTML('beforeend', o); });
+            });
+            loadPending();
+        })();
+
+        async function loadPending() {
+            const el = document.getElementById('pending-list');
+            let q = db.from('results').select('*,students(full_name,class_id),subjects(name),profiles!results_entered_by_fkey(full_name)').eq('status', 'pending').order('created_at', { ascending: false });
+            const { data } = await q;
+            if (!data?.length) { el.innerHTML = '<div class="empty"><span class="material-icons-round">check_circle</span><h3>No pending results</h3></div>'; return; }
+            el.innerHTML = `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Student</th><th>Subject</th><th>Marks</th><th>Grade</th><th>Term</th><th>Entered By</th><th>Actions</th></tr></thead><tbody>
+  ${data.map(r => {
+                const g = getGrade(r.marks, r.max_marks); return `<tr>
+    <td>${r.students?.full_name || '—'}</td><td>${r.subjects?.name || '—'}</td>
+    <td>${r.marks}/${r.max_marks}</td><td><span class="badge badge-${g.c}">${g.l} (${Math.round(r.marks / r.max_marks * 100)}%)</span></td>
+    <td>${r.term}</td><td>${r.profiles?.full_name || '—'}</td>
+    <td><div class="tbl-actions">
+      <button class="btn btn-sm btn-success" onclick="approveResult('${r.id}')"><span class="material-icons-round">check</span> Approve</button>
+      <button class="btn btn-sm btn-danger"  onclick="rejectResult('${r.id}')"><span class="material-icons-round">close</span> Reject</button>
+    </div></td>
+  </tr>`}).join('')}</tbody></table></div>`;
+        }
+
+        async function approveResult(id) {
+            await db.from('results').update({ status: 'approved', approved_by: window._currentProfile.id }).eq('id', id);
+            showToast('Result approved!'); loadPending();
+        }
+        function rejectResult(id) {
+            confirmAction('Reject this result entry?', async () => {
+                await db.from('results').update({ status: 'rejected' }).eq('id', id);
+                showToast('Result rejected', 'error'); loadPending();
+            });
+        }
+
+        async function loadApproved() {
+            const el = document.getElementById('approved-list');
+            el.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+            let q = db.from('results').select('*,students(full_name),subjects(name)').eq('status', 'approved').order('created_at', { ascending: false });
+            const cf = document.getElementById('cls-filter')?.value;
+            const tf = document.getElementById('term-filter')?.value;
+            if (tf) q = q.eq('term', tf);
+            const { data } = await q;
+            let list = data || [];
+            if (cf) list = list.filter(r => r.students?.class_id === cf || true); // simplified
+            if (!list.length) { el.innerHTML = '<div class="empty"><span class="material-icons-round">grade</span><h3>No approved results</h3></div>'; return; }
+            el.innerHTML = `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Student</th><th>Subject</th><th>Marks</th><th>%</th><th>Grade</th><th>Term</th></tr></thead><tbody>
+  ${list.map(r => {
+                const g = getGrade(r.marks, r.max_marks); const pct = Math.round(r.marks / r.max_marks * 100); return `<tr>
+    <td>${r.students?.full_name || '—'}</td><td>${r.subjects?.name || '—'}</td>
+    <td>${r.marks}/${r.max_marks}</td><td>${pct}%</td>
+    <td><span class="badge badge-${g.c}">${g.l}</span></td><td>${r.term}</td>
+  </tr>`}).join('')}</tbody></table></div>`;
+        }
+
+        async function loadSubjects() {
+            const cls = document.getElementById('a-cls').value;
+            const sub = document.getElementById('a-sub');
+            sub.innerHTML = '<option value="">Select…</option>';
+            if (!cls) return;
+            const { data } = await db.from('subjects').select('id,name').eq('class_id', cls);
+            (data || []).forEach(s => sub.insertAdjacentHTML('beforeend', `<option value="${s.id}">${s.name}</option>`));
+        }
+        async function loadStudentsForClass() {
+            const cls = document.getElementById('a-cls').value;
+            const sel = document.getElementById('a-stu');
+            sel.innerHTML = '<option value="">Select…</option>';
+            if (!cls) return;
+            const { data } = await db.from('students').select('id,full_name').eq('class_id', cls).eq('status', 'active').order('full_name');
+            (data || []).forEach(s => sel.insertAdjacentHTML('beforeend', `<option value="${s.id}">${s.full_name}</option>`));
+        }
+
+        function previewGrade() {
+            const m = parseFloat(document.getElementById('a-marks').value), mx = parseFloat(document.getElementById('a-max').value) || 100;
+            const prev = document.getElementById('grade-preview'), badge = document.getElementById('grade-badge');
+            if (!isNaN(m) && m >= 0) { const g = getGrade(m, mx); prev.style.display = 'block'; badge.className = `badge badge-${g.c}`; badge.style.fontSize = '20px'; badge.textContent = `${g.l} — ${Math.round(m / mx * 100)}%`; }
+            else prev.style.display = 'none';
+        }
+
+        async function saveSingle() {
+            const sid = document.getElementById('a-stu').value, subid = document.getElementById('a-sub').value;
+            const marks = parseFloat(document.getElementById('a-marks').value), max = parseFloat(document.getElementById('a-max').value) || 100;
+            if (!sid || !subid || isNaN(marks)) { showToast('Fill all required fields', 'error'); return; }
+            const g = getGrade(marks, max);
+            const { error } = await db.from('results').upsert({
+                student_id: sid, subject_id: subid, marks, max_marks: max,
+                grade_letter: g.l, term: document.getElementById('a-term').value,
+                academic_year: '2024/2025', comments: document.getElementById('a-comments').value,
+                status: _role === 'head_teacher' ? 'approved' : 'pending',
+                entered_by: window._currentProfile.id,
+                approved_by: _role === 'head_teacher' ? window._currentProfile.id : null,
+            }, { onConflict: 'student_id,subject_id,term,academic_year' });
+            if (error) { showToast('Error: ' + error.message, 'error'); return; }
+            showToast(_role === 'head_teacher' ? 'Result saved!' : 'Result submitted for HT approval!');
+            closeModal('add-modal'); loadPending();
+        }
+
+        async function loadBulkClasses() {
+            const sel = document.getElementById('bulk-cls');
+            if (sel.options.length > 1) return;
+            _classes.forEach(c => sel.insertAdjacentHTML('beforeend', `<option value="${c.id}">${c.name} ${c.section || ''}</option>`));
+        }
+
+        async function loadBulkStudents() {
+            const cls = document.getElementById('bulk-cls').value;
+            const subSel = document.getElementById('bulk-sub');
+            subSel.innerHTML = '<option value="">Select subject…</option>';
+            const tbl = document.getElementById('bulk-table');
+            document.getElementById('bulk-actions').style.display = 'none';
+            if (!cls) { tbl.innerHTML = '<p class="text-muted">Select a class.</p>'; return; }
+            const [subs, students] = await Promise.all([
+                db.from('subjects').select('id,name').eq('class_id', cls),
+                db.from('students').select('id,full_name').eq('class_id', cls).eq('status', 'active').order('full_name')
+            ]);
+            (subs.data || []).forEach(s => subSel.insertAdjacentHTML('beforeend', `<option value="${s.id}">${s.name}</option>`));
+            const stus = students.data || [];
+            if (!stus.length) { tbl.innerHTML = '<p class="text-muted">No students in this class.</p>'; return; }
+            document.getElementById('bulk-actions').style.display = 'block';
+            tbl.innerHTML = `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Student</th><th>Marks (out of 100)</th><th>Comments</th></tr></thead><tbody>
+    ${stus.map(s => `<tr><td>${s.full_name}</td><td><input class="form-control" data-sid="${s.id}" type="number" min="0" max="100" placeholder="0" style="width:120px"></td><td><input class="form-control" data-cid="${s.id}" placeholder="Optional…" style="width:100%"></td></tr>`).join('')}
+  </tbody></table></div>`;
+        }
+
+        async function saveBulkResults() {
+            const sub = document.getElementById('bulk-sub').value;
+            const term = document.getElementById('bulk-term').value;
+            if (!sub) { showToast('Select a subject first', 'error'); return; }
+            const rows = document.querySelectorAll('[data-sid]');
+            const inserts = [];
+            rows.forEach(inp => {
+                const marks = parseFloat(inp.value);
+                if (isNaN(marks)) return;
+                const sid = inp.dataset.sid;
+                const commentEl = document.querySelector(`[data-cid="${sid}"]`);
+                const g = getGrade(marks, 100);
+                inserts.push({ student_id: sid, subject_id: sub, marks, max_marks: 100, grade_letter: g.l, term, academic_year: '2024/2025', comments: commentEl?.value || null, status: 'approved', entered_by: window._currentProfile.id, approved_by: window._currentProfile.id });
+            });
+            if (!inserts.length) { showToast('No marks entered', 'error'); return; }
+            const { error } = await db.from('results').upsert(inserts, { onConflict: 'student_id,subject_id,term,academic_year' });
+            if (error) { showToast('Error: ' + error.message, 'error'); return; }
+            showToast(`${inserts.length} results saved!`);
+        }
+
+        function exportResults() {
+            db.from('results').select('*,students(full_name),subjects(name)').eq('status', 'approved').then(({ data }) => {
+                exportCSV((data || []).map(r => ({ name: r.students?.full_name, subject: r.subjects?.name, marks: r.marks, max: r.max_marks, percent: Math.round(r.marks / r.max_marks * 100), grade: getGrade(r.marks, r.max_marks).l, term: r.term })), 'results-report.csv', ['name', 'subject', 'marks', 'max', 'percent', 'grade', 'term']);
+            });
+        }
+    </script>
+</body>
+
+</html>

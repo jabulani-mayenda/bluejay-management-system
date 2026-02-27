@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bluejay School — Login</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html{font-size:14px}
+    body{font-family:'Inter',system-ui,sans-serif;background:#0d1b2a;min-height:100vh;display:flex;align-items:center;justify-content:center;overflow:hidden}
+
+    /* animated background */
+    .bg-shapes{position:fixed;inset:0;overflow:hidden;pointer-events:none}
+    .shape{position:absolute;border-radius:50%;filter:blur(80px);opacity:.15;animation:float 8s ease-in-out infinite}
+    .shape:nth-child(1){width:600px;height:600px;background:#2563eb;top:-200px;left:-200px;animation-delay:0s}
+    .shape:nth-child(2){width:500px;height:500px;background:#7c3aed;bottom:-150px;right:-100px;animation-delay:3s}
+    .shape:nth-child(3){width:300px;height:300px;background:#059669;top:50%;left:50%;animation-delay:5s}
+    @keyframes float{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(20px,-30px) scale(1.05)}}
+
+    /* login card */
+    .login-card{position:relative;background:rgba(255,255,255,.05);backdrop-filter:blur(30px);border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:48px 44px;width:100%;max-width:440px;box-shadow:0 32px 80px rgba(0,0,0,.5)}
+
+    .logo-wrap{text-align:center;margin-bottom:32px}
+    .logo{width:68px;height:68px;border-radius:18px;background:linear-gradient(135deg,#2563eb,#7c3aed);display:inline-flex;align-items:center;justify-content:center;font-size:32px;color:white;font-weight:900;margin-bottom:14px;box-shadow:0 8px 32px rgba(37,99,235,.4)}
+    .logo-title{font-size:22px;font-weight:800;color:white;margin-bottom:4px}
+    .logo-sub{font-size:13px;color:rgba(255,255,255,.5)}
+
+    /* tab switcher */
+    .tab-row{display:flex;background:rgba(255,255,255,.07);border-radius:10px;padding:4px;gap:4px;margin-bottom:28px}
+    .tab-btn{flex:1;padding:8px;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;background:transparent;color:rgba(255,255,255,.5);transition:all .2s;font-family:inherit}
+    .tab-btn.active{background:rgba(255,255,255,.15);color:white}
+
+    .form-label{display:block;font-size:12.5px;font-weight:600;color:rgba(255,255,255,.7);margin-bottom:6px}
+    .input-wrap{position:relative;margin-bottom:16px}
+    .input-icon{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:rgba(255,255,255,.3);font-size:19px}
+    .inp{width:100%;padding:12px 14px 12px 42px;border:1.5px solid rgba(255,255,255,.1);border-radius:10px;background:rgba(255,255,255,.07);color:white;font-size:13.5px;outline:none;transition:border-color .2s;font-family:inherit}
+    .inp::placeholder{color:rgba(255,255,255,.25)}
+    .inp:focus{border-color:rgba(37,99,235,.7);background:rgba(255,255,255,.1)}
+
+    .role-select{width:100%;padding:11px 14px;border:1.5px solid rgba(255,255,255,.1);border-radius:10px;background:rgba(255,255,255,.07);color:rgba(255,255,255,.7);font-size:13.5px;outline:none;font-family:inherit;margin-bottom:16px;cursor:pointer}
+    .role-select option{background:#1e293b;color:white}
+
+    .btn-login{width:100%;padding:13px;border:none;border-radius:11px;background:linear-gradient(135deg,#2563eb,#1d4ed8);color:white;font-size:15px;font-weight:700;cursor:pointer;transition:all .2s;font-family:inherit;margin-top:8px;box-shadow:0 4px 16px rgba(37,99,235,.4)}
+    .btn-login:hover{transform:translateY(-1px);box-shadow:0 6px 22px rgba(37,99,235,.5)}
+    .btn-login:active{transform:translateY(0)}
+    .btn-login:disabled{opacity:.6;cursor:not-allowed;transform:none}
+
+    .err-msg{background:rgba(220,38,38,.15);border:1px solid rgba(220,38,38,.3);border-radius:9px;padding:10px 14px;color:#fca5a5;font-size:13px;margin-bottom:14px;display:none;align-items:center;gap:8px}
+    .err-msg.show{display:flex}
+
+    .footer-note{text-align:center;margin-top:22px;font-size:12px;color:rgba(255,255,255,.3);line-height:1.6}
+
+    /* loading state */
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .spin{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,.3);border-top-color:white;border-radius:50%;animation:spin .6s linear infinite;vertical-align:middle;margin-right:8px}
+  </style>
+</head>
+<body>
+  <div class="bg-shapes">
+    <div class="shape"></div>
+    <div class="shape"></div>
+    <div class="shape"></div>
+  </div>
+
+  <div class="login-card">
+    <div class="logo-wrap">
+      <div class="logo">B</div>
+      <div class="logo-title">Bluejay School</div>
+      <div class="logo-sub">Management System</div>
+    </div>
+
+    <div class="tab-row">
+      <button class="tab-btn active" onclick="setTab('login',this)">Sign In</button>
+      <button class="tab-btn"        onclick="setTab('forgot',this)">Reset Password</button>
+    </div>
+
+    <!-- LOGIN FORM -->
+    <div id="tab-login">
+      <div class="err-msg" id="err-msg">
+        <span class="material-icons-round" style="font-size:17px">error</span>
+        <span id="err-text">Invalid credentials</span>
+      </div>
+
+      <label class="form-label">Email Address</label>
+      <div class="input-wrap">
+        <span class="material-icons-round input-icon">email</span>
+        <input class="inp" id="email" type="email" placeholder="your@email.com" autocomplete="email">
+      </div>
+
+      <label class="form-label">Password</label>
+      <div class="input-wrap">
+        <span class="material-icons-round input-icon">lock</span>
+        <input class="inp" id="password" type="password" placeholder="••••••••" autocomplete="current-password">
+      </div>
+
+      <button class="btn-login" id="btn-login" onclick="doLogin()">Sign In</button>
+    </div>
+
+    <!-- FORGOT FORM -->
+    <div id="tab-forgot" style="display:none">
+      <p style="font-size:13px;color:rgba(255,255,255,.5);margin-bottom:16px">Enter your email to receive a password reset link.</p>
+      <div class="err-msg" id="reset-msg" style="background:rgba(22,163,74,.15);border-color:rgba(22,163,74,.3)">
+        <span class="material-icons-round" style="font-size:17px;color:#86efac">check_circle</span>
+        <span id="reset-text" style="color:#86efac">Reset link sent! Check your email.</span>
+      </div>
+      <label class="form-label">Email Address</label>
+      <div class="input-wrap">
+        <span class="material-icons-round input-icon">email</span>
+        <input class="inp" id="reset-email" type="email" placeholder="your@email.com">
+      </div>
+      <button class="btn-login" id="btn-reset" onclick="doReset()">Send Reset Link</button>
+    </div>
+
+    <div class="footer-note">
+      &copy; 2024 Bluejay School Management System<br>
+      Contact your System Admin for account issues
+    </div>
+  </div>
+
+  <script src="config.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    const { createClient } = supabase;
+    const db = createClient(window.SUPABASE_URL, window.SUPABASE_ANON);
+
+    const ROLE_DASHBOARDS = {
+      system_admin: 'pages/system-admin/dashboard.html',
+      admin:        'pages/admin/dashboard.html',
+      head_teacher: 'pages/headteacher/dashboard.html',
+      teacher:      'pages/teacher/dashboard.html',
+      parent:       'pages/parent/dashboard.html',
+    };
+
+    // Check if already logged in
+    (async () => {
+      const { data: { user } } = await db.auth.getUser();
+      if (user) {
+        const { data: profile } = await db.from('profiles').select('role,status').eq('id', user.id).single();
+        if (profile && profile.status === 'active') {
+          window.location.href = ROLE_DASHBOARDS[profile.role] || 'index.html';
+        }
+      }
+    })();
+
+    function setTab(tab, btn) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('tab-login').style.display  = tab === 'login'  ? '' : 'none';
+      document.getElementById('tab-forgot').style.display = tab === 'forgot' ? '' : 'none';
+    }
+
+    function showErr(msg) {
+      const el = document.getElementById('err-msg');
+      document.getElementById('err-text').textContent = msg;
+      el.classList.add('show');
+    }
+    function hideErr() { document.getElementById('err-msg').classList.remove('show'); }
+
+    async function doLogin() {
+      hideErr();
+      const email    = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      if (!email || !password) { showErr('Please enter your email and password.'); return; }
+
+      const btn = document.getElementById('btn-login');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spin"></span>Signing in...';
+
+      const { data, error } = await db.auth.signInWithPassword({ email, password });
+      if (error) {
+        showErr(error.message.includes('credentials') ? 'Incorrect email or password.' : error.message);
+        btn.disabled = false; btn.textContent = 'Sign In';
+        return;
+      }
+
+      const { data: profile, error: pe } = await db.from('profiles').select('*').eq('id', data.user.id).single();
+      if (pe || !profile) { showErr('Account record not found. Contact System Admin.'); btn.disabled = false; btn.textContent = 'Sign In'; return; }
+
+      if (profile.status === 'pending')  { showErr('Your account is pending System Admin approval.'); btn.disabled = false; btn.textContent = 'Sign In'; return; }
+      if (profile.status === 'rejected') { showErr('Your account has been rejected. Contact admin.'); btn.disabled = false; btn.textContent = 'Sign In'; return; }
+      if (profile.status === 'inactive') { showErr('Your account is inactive. Contact admin.'); btn.disabled = false; btn.textContent = 'Sign In'; return; }
+
+      window.location.href = ROLE_DASHBOARDS[profile.role] || 'index.html';
+    }
+
+    async function doReset() {
+      const email = document.getElementById('reset-email').value.trim();
+      if (!email) return;
+      const btn = document.getElementById('btn-reset');
+      btn.disabled = true; btn.innerHTML = '<span class="spin"></span>Sending...';
+      await db.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin + '/index.html' });
+      document.getElementById('reset-msg').classList.add('show');
+      btn.disabled = false; btn.textContent = 'Send Reset Link';
+    }
+
+    // Enter key support
+    document.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+  </script>
+</body>
+</html>

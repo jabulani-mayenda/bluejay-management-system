@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Management | Bluejay School</title>
+    <link rel="stylesheet" href="../../assets/css/main.css">
+</head>
+
+<body>
+    <div class="app">
+        <div id="sidebar-placeholder"></div>
+        <div class="main">
+            <header class="topbar">
+                <div class="topbar-left">
+                    <div class="topbar-title">User Management</div>
+                    <div class="topbar-path">System Admin / Users</div>
+                </div>
+            </header>
+            <div class="page-content">
+                <div class="ph">
+                    <div>
+                        <h1>User Accounts</h1>
+                        <p>Manage all staff and parent accounts</p>
+                    </div>
+                    <div class="ph-actions"><button class="btn btn-primary" onclick="openModal('add-modal')"><span
+                                class="material-icons-round">person_add</span> Create Account</button></div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header"><span class="material-icons-round"
+                            style="color:var(--primary)">people</span>
+                        <div class="card-title">All Users</div>
+                        <div class="tabs" style="margin:0">
+                            <button class="tab active" onclick="setRole('all',this)">All</button>
+                            <button class="tab" onclick="setRole('admin',this)">Admin</button>
+                            <button class="tab" onclick="setRole('head_teacher',this)">Head Teacher</button>
+                            <button class="tab" onclick="setRole('teacher',this)">Teachers</button>
+                            <button class="tab" onclick="setRole('parent',this)">Parents</button>
+                        </div>
+                    </div>
+                    <div class="card-body" style="padding:16px">
+                        <div class="filter-bar">
+                            <div class="search-box"><span class="material-icons-round">search</span><input type="text"
+                                    placeholder="Search name or email…" oninput="search(this.value)"></div>
+                        </div>
+                        <div id="user-list">
+                            <div class="loading">
+                                <div class="spinner"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CREATE ACCOUNT MODAL -->
+    <div class="overlay" id="add-modal">
+        <div class="modal">
+            <div class="modal-header"><span class="material-icons-round" style="color:var(--primary)">person_add</span>
+                <div class="modal-title">Create New Account</div><button class="modal-close"
+                    onclick="closeModal('add-modal')"><span class="material-icons-round">close</span></button>
+            </div>
+            <div class="modal-body">
+                <div
+                    style="background:var(--info-light);border:1px solid #bae6fd;border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:13px;color:var(--info)">
+                    <span class="material-icons-round" style="font-size:16px;vertical-align:middle">info</span>
+                    Set a temporary password for the user. They can use this to log in immediately and can change it
+                    later in their profile.
+                </div>
+                <div class="form-row form-row-2">
+                    <div class="form-group"><label class="form-label">Full Name <span class="req">*</span></label><input
+                            class="form-control" id="u-name" placeholder="Full name"></div>
+                    <div class="form-group"><label class="form-label">Email <span class="req">*</span></label><input
+                            class="form-control" id="u-email" type="email" placeholder="user@email.com"></div>
+                    <div class="form-group"><label class="form-label">Role <span class="req">*</span></label><select
+                            class="form-control" id="u-role">
+                            <option value="">Select…</option>
+                            <option value="admin">Admin</option>
+                            <option value="head_teacher">Head Teacher</option>
+                            <option value="teacher">Teacher</option>
+                            <option value="parent">Parent</option>
+                        </select></div>
+                    <div class="form-group"><label class="form-label">Phone</label><input class="form-control"
+                            id="u-phone" placeholder="+260…"></div>
+                    <div class="form-group" style="grid-column: span 2;"><label class="form-label">Temporary Password
+                            <span class="req">*</span></label><input class="form-control" id="u-pass" type="text"
+                            placeholder="e.g. Bluejay@2024!" required minlength="6">
+                        <div style="font-size:11px;color:var(--text-3);margin-top:4px">Must be at least 6 characters.
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group"><label class="form-label">Initial Status</label><select class="form-control"
+                        id="u-status">
+                        <option value="active">Active (approved)</option>
+                        <option value="pending">Pending (awaiting approval)</option>
+                    </select></div>
+            </div>
+            <div class="modal-footer"><button class="btn btn-outline"
+                    onclick="closeModal('add-modal')">Cancel</button><button class="btn btn-primary"
+                    onclick="createUser()"><span class="material-icons-round">save</span> Create Account</button></div>
+        </div>
+    </div>
+
+    <script src="../../config.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../../assets/js/shared.js"></script>
+    <script>
+        // Use service role key if available for creating users directly
+        const dbAdmin = window.SUPABASE_SERVICE_KEY
+            ? supabase.createClient(window.SUPABASE_URL, window.SUPABASE_SERVICE_KEY)
+            : db;
+        let _users = [], _roleFilter = 'all', _search = '';
+
+        (async () => { await initApp(['system_admin']); await loadUsers(); })();
+
+        async function loadUsers() {
+            const { data } = await db.from('profiles').select('*').neq('role', 'system_admin').order('created_at', { ascending: false });
+            _users = data || [];
+            render();
+        }
+
+        function setRole(r, btn) { document.querySelectorAll('.tabs .tab').forEach(b => b.classList.remove('active')); btn.classList.add('active'); _roleFilter = r; render(); }
+        function search(v) { _search = v.toLowerCase(); render(); }
+
+        function render() {
+            const el = document.getElementById('user-list');
+            let list = _users;
+            if (_roleFilter !== 'all') list = list.filter(u => u.role === _roleFilter);
+            if (_search) list = list.filter(u => u.full_name.toLowerCase().includes(_search) || u.email.toLowerCase().includes(_search));
+            if (!list.length) { el.innerHTML = '<div class="empty"><span class="material-icons-round">people</span><h3>No users found</h3></div>'; return; }
+            el.innerHTML = `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>User</th><th>Role</th><th>Phone</th><th>Status</th><th>Actions</th></tr></thead><tbody>
+    ${list.map(u => `<tr>
+      <td><div class="tbl-avatar"><div class="tbl-avi">${initials(u.full_name)}</div><div><div class="tbl-name">${u.full_name}</div><div class="tbl-sub">${u.email}</div></div></div></td>
+      <td><span class="badge badge-primary">${ROLE_LABELS[u.role] || u.role}</span></td>
+      <td>${u.phone || '—'}</td>
+      <td><span class="badge ${u.status === 'active' ? 'badge-success' : u.status === 'pending' ? 'badge-warning' : 'badge-danger'}">${u.status}</span></td>
+      <td><div class="tbl-actions">
+        ${u.status !== 'active' ? `<button class="btn btn-sm btn-success" onclick="setStatus('${u.id}','active')"><span class="material-icons-round">check</span> Activate</button>` : ''}
+        ${u.status === 'active' ? `<button class="btn btn-sm btn-warning" onclick="setStatus('${u.id}','inactive')"><span class="material-icons-round">pause</span> Suspend</button>` : ''}
+        <button class="btn btn-sm btn-danger" onclick="deleteUser('${u.id}','${u.full_name}')"><span class="material-icons-round">delete</span></button>
+      </div></td>
+    </tr>`).join('')}
+  </tbody></table></div>`;
+        }
+
+        async function setStatus(id, status) {
+            await db.from('profiles').update({ status }).eq('id', id);
+            await logActivity(`Set user status to ${status}`, 'profile', id, '');
+            showToast('User status updated!'); loadUsers();
+        }
+        function deleteUser(id, name) {
+            confirmAction(`Permanently delete "${name}"? This cannot be undone.`, async () => {
+                await dbAdmin.auth.admin.deleteUser(id).catch(() => { });
+                await db.from('profiles').delete().eq('id', id);
+                showToast('User deleted', 'error'); loadUsers();
+            });
+        }
+
+        async function createUser() {
+            const name = document.getElementById('u-name').value.trim();
+            const email = document.getElementById('u-email').value.trim();
+            const role = document.getElementById('u-role').value;
+            const status = document.getElementById('u-status').value;
+            const pass = document.getElementById('u-pass').value;
+
+            if (!name || !email || !role || !pass) { showToast('Fill all required fields including password', 'error'); return; }
+            if (pass.length < 6) { showToast('Password must be at least 6 characters', 'error'); return; }
+
+            if (!window.SUPABASE_SERVICE_KEY) {
+                showToast('Please add SUPABASE_SERVICE_KEY to config.js to create users directly.', 'error'); return;
+            }
+
+            // Create auth user using the admin client
+            const { data: authData, error: authErr } = await dbAdmin.auth.admin.createUser({
+                email,
+                password: pass,
+                email_confirm: true
+            });
+
+            if (authErr) { showToast('Auth Error: ' + authErr.message, 'error'); return; }
+
+            // Wait a moment for the auth trigger to complete (if any) before inserting profile
+            const { error } = await db.from('profiles').upsert({
+                id: authData.user.id,
+                full_name: name,
+                email,
+                role,
+                phone: document.getElementById('u-phone').value || null,
+                status,
+                created_by: window._currentProfile.id
+            });
+
+            if (error) { showToast('Profile Error: ' + error.message, 'error'); return; }
+
+            showToast('Account created! They can now log in with that password.');
+            closeModal('add-modal'); loadUsers();
+
+            // Clear inputs
+            document.getElementById('u-name').value = '';
+            document.getElementById('u-email').value = '';
+            document.getElementById('u-pass').value = '';
+            document.getElementById('u-phone').value = '';
+            document.getElementById('u-role').value = '';
+        }
+    </script>
+</body>
+
+</html>

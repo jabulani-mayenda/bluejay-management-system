@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin — Dashboard | Bluejay School</title>
+    <link rel="stylesheet" href="../../assets/css/main.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+
+<body>
+    <div class="app">
+        <div id="sidebar-placeholder"></div>
+        <div class="main">
+            <header class="topbar">
+                <div class="topbar-left">
+                    <div class="topbar-title">Admin Dashboard</div>
+                    <div class="topbar-path">Admin / Overview</div>
+                </div>
+                <div class="topbar-right">
+                    <button class="tb-btn" onclick="window.location.href='../../shared/noticeboard.html'"
+                        title="Notice Board"><span class="material-icons-round">campaign</span></button>
+                </div>
+            </header>
+            <div class="page-content">
+                <div class="ph">
+                    <div>
+                        <h1 id="greeting">Welcome</h1>
+                        <p id="date-sub">Loading…</p>
+                    </div>
+                    <div class="ph-actions">
+                        <a href="students.html" class="btn btn-primary"><span
+                                class="material-icons-round">person_add</span> Add Student</a>
+                        <a href="expenses.html" class="btn btn-outline"><span
+                                class="material-icons-round">shopping_cart</span> New Expense</a>
+                    </div>
+                </div>
+
+                <!-- KPI Cards -->
+                <div class="stat-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon si-blue"><span class="material-icons-round">school</span></div>
+                        <div class="stat-info">
+                            <div class="stat-label">Total Students</div>
+                            <div class="stat-value" id="s-stu">—</div>
+                            <div class="stat-meta" id="s-pending-meta">Active</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon si-green"><span class="material-icons-round">check_circle</span></div>
+                        <div class="stat-info">
+                            <div class="stat-label">Fully Paid</div>
+                            <div class="stat-value" id="s-paid">—</div>
+                            <div class="stat-meta">Fees cleared</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon si-orange"><span class="material-icons-round">timelapse</span></div>
+                        <div class="stat-info">
+                            <div class="stat-label">Partial Payers</div>
+                            <div class="stat-value" id="s-partial">—</div>
+                            <div class="stat-meta">Still owing</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon si-red"><span class="material-icons-round">cancel</span></div>
+                        <div class="stat-info">
+                            <div class="stat-label">Unpaid</div>
+                            <div class="stat-value" id="s-unpaid">—</div>
+                            <div class="stat-meta">No payment made</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Fee Collection Chart + Recent Payments -->
+                <div class="grid-2 mt-20">
+                    <!-- Donut Chart -->
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="material-icons-round" style="color:var(--primary)">donut_large</span>
+                            <div class="card-title">Fee Collection Status</div>
+                            <a href="fees.html" class="btn btn-sm btn-outline">Manage Fees</a>
+                        </div>
+                        <div class="card-body" style="display:flex;flex-direction:column;align-items:center;gap:14px">
+                            <div class="chart-wrap" style="max-width:230px;position:relative">
+                                <canvas id="Chart-fees"></canvas>
+                                <div class="chart-center-label">
+                                    <div class="num" id="fee-pct-label">—%</div>
+                                    <div class="sub">Collected</div>
+                                </div>
+                            </div>
+                            <div
+                                style="width:100%;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;text-align:center">
+                                <div style="background:var(--success-light);border-radius:10px;padding:10px">
+                                    <div style="font-size:20px;font-weight:900;color:var(--success)" id="d-paid">—</div>
+                                    <div style="font-size:11px;color:var(--text-3)">Paid</div>
+                                </div>
+                                <div style="background:var(--warning-light);border-radius:10px;padding:10px">
+                                    <div style="font-size:20px;font-weight:900;color:var(--warning)" id="d-partial">—
+                                    </div>
+                                    <div style="font-size:11px;color:var(--text-3)">Partial</div>
+                                </div>
+                                <div style="background:var(--danger-light);border-radius:10px;padding:10px">
+                                    <div style="font-size:20px;font-weight:900;color:var(--danger)" id="d-unpaid">—
+                                    </div>
+                                    <div style="font-size:11px;color:var(--text-3)">Unpaid</div>
+                                </div>
+                            </div>
+                            <div style="width:100%;padding:14px;background:var(--bg);border-radius:10px">
+                                <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span
+                                        style="font-size:12px;color:var(--text-2)">Collected</span><span
+                                        style="font-weight:700;color:var(--success)" id="collected-amt">—</span></div>
+                                <div style="display:flex;justify-content:space-between"><span
+                                        style="font-size:12px;color:var(--text-2)">Outstanding</span><span
+                                        style="font-weight:700;color:var(--danger)" id="outstanding-amt">—</span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Fee bar by class -->
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="material-icons-round" style="color:var(--success)">bar_chart</span>
+                            <div class="card-title">Collection Rate by Class</div>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-wrap"><canvas id="Chart-classes"></canvas></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Expense Trend + Recent Students -->
+                <div class="grid-2 mt-20">
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="material-icons-round" style="color:var(--warning)">receipt_long</span>
+                            <div class="card-title">Expense Requests</div>
+                            <a href="expenses.html" class="btn btn-sm btn-outline">View All</a>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-wrap" style="min-height:180px"><canvas id="Chart-expenses"></canvas></div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="material-icons-round" style="color:var(--primary)">schedule</span>
+                            <div class="card-title">Recently Added Students</div>
+                            <a href="students.html" class="btn btn-sm btn-outline">All Students</a>
+                        </div>
+                        <div class="card-body" style="padding-bottom:0" id="recent-students">
+                            <div class="loading">
+                                <div class="spinner"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Fee Alerts -->
+                <div class="card mt-20">
+                    <div class="card-header">
+                        <span class="material-icons-round" style="color:var(--danger)">notification_important</span>
+                        <div class="card-title">Fee Alerts — Unpaid Students</div>
+                        <a href="fees.html" class="btn btn-sm btn-danger"><span
+                                class="material-icons-round">payments</span> Track Fees</a>
+                    </div>
+                    <div class="card-body" id="fee-alerts">
+                        <div class="loading">
+                            <div class="spinner"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="../../config.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../../assets/js/shared.js"></script>
+    <script>
+        Chart.defaults.color = '#94a3b8';
+        Chart.defaults.borderColor = 'rgba(148,163,184,.12)';
+        Chart.defaults.font.family = "'Inter','Segoe UI',sans-serif";
+
+        (async () => {
+            const r = await initApp(['admin']);
+            if (!r) return;
+            const hr = new Date().getHours();
+            document.getElementById('greeting').textContent =
+                (hr < 12 ? 'Good Morning' : hr < 17 ? 'Good Afternoon' : 'Good Evening') + ', ' + r.profile.full_name.split(' ')[0];
+            document.getElementById('date-sub').textContent =
+                new Date().toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+            const [{ data: students }, { data: cls }, { data: expenses }, { data: recent }] = await Promise.all([
+                db.from('students').select('fees_total,fees_paid,class_id').eq('status', 'active'),
+                db.from('classes').select('id,name,section'),
+                db.from('expenses').select('amount,status,created_at').eq('submitted_by', r.profile.id).order('created_at', { ascending: false }),
+                db.from('students').select('*,classes(name,section)').eq('status', 'pending').order('created_at', { ascending: false }).limit(6),
+            ]);
+
+            const stus = students || [];
+            const paid = stus.filter(s => parseFloat(s.fees_paid || 0) >= parseFloat(s.fees_total || 0) && parseFloat(s.fees_total || 0) > 0).length;
+            const partial = stus.filter(s => parseFloat(s.fees_paid || 0) > 0 && parseFloat(s.fees_paid || 0) < parseFloat(s.fees_total || 0)).length;
+            const unpaid = stus.filter(s => parseFloat(s.fees_paid || 0) === 0).length;
+            const collected = stus.reduce((s, x) => s + parseFloat(x.fees_paid || 0), 0);
+            const totalFees = stus.reduce((s, x) => s + parseFloat(x.fees_total || 0), 0);
+            const outstanding = totalFees - collected;
+            const pct = totalFees > 0 ? Math.round((collected / totalFees) * 100) : 0;
+
+            document.getElementById('s-stu').textContent = stus.length;
+            document.getElementById('s-paid').textContent = paid;
+            document.getElementById('s-partial').textContent = partial;
+            document.getElementById('s-unpaid').textContent = unpaid;
+            document.getElementById('d-paid').textContent = paid;
+            document.getElementById('d-partial').textContent = partial;
+            document.getElementById('d-unpaid').textContent = unpaid;
+            document.getElementById('fee-pct-label').textContent = pct + '%';
+            document.getElementById('collected-amt').textContent = formatMoney(collected);
+            document.getElementById('outstanding-amt').textContent = formatMoney(outstanding);
+
+            // Donut chart
+            new Chart(document.getElementById('Chart-fees'), {
+                type: 'doughnut',
+                data: { labels: ['Fully Paid', 'Partial', 'Unpaid'], datasets: [{ data: [paid, partial, unpaid], backgroundColor: ['#16a34a', '#d97706', '#dc2626'], borderWidth: 0, hoverOffset: 6 }] },
+                options: { cutout: '72%', responsive: true, plugins: { legend: { display: false } } }
+            });
+
+            // Bar chart: collection rate by class
+            const clsMap = {};
+            (cls || []).forEach(c => { clsMap[c.id] = c.name + ' ' + (c.section || ''); });
+            const clsPaid = {}, clsTotal = {};
+            stus.forEach(s => { const k = clsMap[s.class_id] || '?'; clsPaid[k] = (clsPaid[k] || 0) + parseFloat(s.fees_paid || 0); clsTotal[k] = (clsTotal[k] || 0) + parseFloat(s.fees_total || 0); });
+            const clsLabels = Object.keys(clsTotal);
+            const clsRates = clsLabels.map(k => clsTotal[k] > 0 ? Math.round((clsPaid[k] || 0) / clsTotal[k] * 100) : 0);
+            new Chart(document.getElementById('Chart-classes'), {
+                type: 'bar',
+                data: { labels: clsLabels, datasets: [{ label: 'Collected (%)', data: clsRates, backgroundColor: clsRates.map(r => r >= 80 ? 'rgba(22,163,74,.8)' : r >= 50 ? 'rgba(217,119,6,.8)' : 'rgba(220,38,38,.8)'), borderRadius: 6, borderSkipped: false }] },
+                options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { min: 0, max: 100, ticks: { callback: v => v + '%' } } } }
+            });
+
+            // Expense status bar
+            const exps = expenses || [];
+            const ep = exps.filter(e => e.status === 'pending').length;
+            const ea = exps.filter(e => e.status === 'approved').length;
+            const er = exps.filter(e => e.status === 'rejected').length;
+            new Chart(document.getElementById('Chart-expenses'), {
+                type: 'doughnut',
+                data: { labels: ['Approved', 'Pending', 'Rejected'], datasets: [{ data: [ea, ep, er], backgroundColor: ['#16a34a', '#d97706', '#dc2626'], borderWidth: 0, hoverOffset: 4 }] },
+                options: { cutout: '60%', responsive: true, plugins: { legend: { position: 'right' } } }
+            });
+
+            // Recent pending students
+            const rsEl = document.getElementById('recent-students');
+            if (!(recent || []).length) rsEl.innerHTML = '<div class="empty" style="padding:30px"><span class="material-icons-round">school</span><h3>No pending students</h3></div>';
+            else rsEl.innerHTML = (recent || []).map(s => `<div class="flex gap-10" style="padding:10px 0;border-bottom:1px solid var(--border-2);align-items:center">
+    <div class="tbl-avi">${initials(s.full_name)}</div>
+    <div style="flex:1"><div class="fw-700">${s.full_name}</div><div class="text-muted">Class ${s.classes?.name || '—'} · ${formatMoney(s.fees_total)} fees</div></div>
+    <span class="badge badge-warning"><span class="material-icons-round" style="font-size:13px">timelapse</span> Pending</span>
+  </div>`).join('');
+
+            // Fee alerts
+            const alertsEl = document.getElementById('fee-alerts');
+            const unpaidList = stus.filter(s => parseFloat(s.fees_paid || 0) === 0 && parseFloat(s.fees_total || 0) > 0);
+            const { data: unpaidFull } = await db.from('students').select('id,full_name,fees_total,fees_paid,classes(name,section)').eq('status', 'active').filter('fees_paid', 'eq', 0).limit(8);
+            if (!(unpaidFull || []).length) alertsEl.innerHTML = '<div class="empty" style="padding:30px"><span class="material-icons-round" style="color:var(--success)">check_circle</span><h3>No unpaid students</h3></div>';
+            else alertsEl.innerHTML = `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Student</th><th>Class</th><th>Total Fees</th><th>Action</th></tr></thead><tbody>
+    ${(unpaidFull || []).map(s => `<tr>
+      <td><div class="tbl-avatar"><div class="tbl-avi">${initials(s.full_name)}</div><div><div class="tbl-name">${s.full_name}</div><div class="tbl-sub">${s.id}</div></div></div></td>
+      <td>Class ${s.classes?.name || '—'} ${s.classes?.section || ''}</td>
+      <td style="color:var(--danger);font-weight:700">${formatMoney(s.fees_total)}</td>
+      <td><a href="fees.html" class="btn btn-sm btn-primary"><span class="material-icons-round">payments</span> Record Payment</a></td>
+    </tr>`).join('')}
+  </tbody></table></div>`;
+        })();
+    </script>
+</body>
+
+</html>

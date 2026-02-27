@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Head Teacher — Dashboard | Bluejay School</title>
+    <link rel="stylesheet" href="../../assets/css/main.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+
+<body>
+    <div class="app">
+        <div id="sidebar-placeholder"></div>
+        <div class="main">
+            <header class="topbar">
+                <div class="topbar-left">
+                    <div class="topbar-title">Head Teacher Dashboard</div>
+                    <div class="topbar-path">Head Teacher / Overview</div>
+                </div>
+                <div class="topbar-right">
+                    <button class="tb-btn" onclick="window.location.href='../../shared/noticeboard.html'"
+                        title="Notice Board"><span class="material-icons-round">campaign</span></button>
+                </div>
+            </header>
+            <div class="page-content">
+                <div class="ph">
+                    <div>
+                        <h1 id="greeting">Good Morning</h1>
+                        <p id="date-sub">Loading…</p>
+                    </div>
+                    <div class="ph-actions">
+                        <a href="results.html" class="btn btn-primary"><span class="material-icons-round">grade</span>
+                            Enter Results</a>
+                        <a href="classes.html" class="btn btn-outline"><span class="material-icons-round">class</span>
+                            Classes</a>
+                    </div>
+                </div>
+
+                <!-- KPI Cards -->
+                <div class="stat-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon si-blue"><span class="material-icons-round">class</span></div>
+                        <div class="stat-info">
+                            <div class="stat-label">Total Classes</div>
+                            <div class="stat-value" id="s-cls">—</div>
+                            <div class="stat-meta">Active classes</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon si-green"><span class="material-icons-round">school</span></div>
+                        <div class="stat-info">
+                            <div class="stat-label">Total Students</div>
+                            <div class="stat-value" id="s-stu">—</div>
+                            <div class="stat-meta">Enrolled &amp; active</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon si-orange"><span class="material-icons-round">people</span></div>
+                        <div class="stat-info">
+                            <div class="stat-label">Teachers</div>
+                            <div class="stat-value" id="s-tch">—</div>
+                            <div class="stat-meta">Active staff</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon si-purple"><span class="material-icons-round">menu_book</span></div>
+                        <div class="stat-info">
+                            <div class="stat-label">Subjects</div>
+                            <div class="stat-value" id="s-sub">—</div>
+                            <div class="stat-meta">Across all classes</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts Row 1 -->
+                <div class="grid-2 mt-20">
+                    <!-- Grade Distribution Donut -->
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="material-icons-round" style="color:var(--primary)">donut_large</span>
+                            <div class="card-title">Grade Distribution</div>
+                            <div class="tabs" style="margin:0">
+                                <button class="tab active" onclick="loadGrades('Term 1',this)">Term 1</button>
+                                <button class="tab" onclick="loadGrades('Term 2',this)">Term 2</button>
+                                <button class="tab" onclick="loadGrades('Term 3',this)">Term 3</button>
+                            </div>
+                        </div>
+                        <div class="card-body" style="display:flex;flex-direction:column;align-items:center;gap:14px">
+                            <div class="chart-wrap" style="max-width:230px;position:relative">
+                                <canvas id="Chart-grades"></canvas>
+                                <div class="chart-center-label">
+                                    <div class="num" id="grade-avg">—%</div>
+                                    <div class="sub">Avg Score</div>
+                                </div>
+                            </div>
+                            <div class="legend" id="grade-legend"></div>
+                        </div>
+                    </div>
+
+                    <!-- Class Performance Bar -->
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="material-icons-round" style="color:var(--success)">bar_chart</span>
+                            <div class="card-title">Average Score by Class</div>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-wrap"><canvas id="Chart-cls-perf"></canvas></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Attendance Rate + Pending Results -->
+                <div class="grid-2 mt-20">
+                    <!-- Attendance Line Chart -->
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="material-icons-round" style="color:var(--info)">insert_chart</span>
+                            <div class="card-title">Attendance — Last 7 Days</div>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-wrap"><canvas id="Chart-att"></canvas></div>
+                        </div>
+                    </div>
+
+                    <!-- Pending Results Queue -->
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="material-icons-round" style="color:var(--warning)">pending_actions</span>
+                            <div class="card-title">Pending Grade Approvals</div>
+                            <a href="results.html" class="btn btn-sm btn-warning"><span
+                                    class="material-icons-round">check_circle</span> Review</a>
+                        </div>
+                        <div class="card-body" id="pending-grades">
+                            <div class="loading">
+                                <div class="spinner"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="card mt-20">
+                    <div class="card-header"><span class="material-icons-round" style="color:var(--primary)">bolt</span>
+                        <div class="card-title">Quick Actions</div>
+                    </div>
+                    <div class="card-body">
+                        <div class="grid-3" style="gap:12px">
+                            <a href="classes.html" class="btn btn-outline"
+                                style="justify-content:center;padding:16px"><span
+                                    class="material-icons-round">class</span> Manage Classes</a>
+                            <a href="subjects.html" class="btn btn-outline"
+                                style="justify-content:center;padding:16px"><span
+                                    class="material-icons-round">menu_book</span> Manage Subjects</a>
+                            <a href="teachers.html" class="btn btn-outline"
+                                style="justify-content:center;padding:16px"><span
+                                    class="material-icons-round">people</span> Assign Teachers</a>
+                            <a href="results.html" class="btn btn-outline"
+                                style="justify-content:center;padding:16px"><span
+                                    class="material-icons-round">grade</span> Enter Grades</a>
+                            <a href="results.html" class="btn btn-outline"
+                                style="justify-content:center;padding:16px"><span
+                                    class="material-icons-round">check_circle</span> Approve Results</a>
+                            <a href="../../shared/noticeboard.html" class="btn btn-outline"
+                                style="justify-content:center;padding:16px"><span
+                                    class="material-icons-round">campaign</span> Post Notice</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="../../config.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../../assets/js/shared.js"></script>
+    <script>
+        Chart.defaults.color = '#94a3b8';
+        Chart.defaults.borderColor = 'rgba(148,163,184,.12)';
+        Chart.defaults.font.family = "'Inter','Segoe UI',sans-serif";
+
+        let gradeChart = null;
+
+        (async () => {
+            const r = await initApp(['head_teacher']);
+            if (!r) return;
+            const hr = new Date().getHours();
+            document.getElementById('greeting').textContent =
+                (hr < 12 ? 'Good Morning' : hr < 17 ? 'Good Afternoon' : 'Good Evening') + ', ' + r.profile.full_name.split(' ')[0];
+            document.getElementById('date-sub').textContent =
+                new Date().toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+            const [
+                { count: clsCnt }, { count: stuCnt }, { count: tchCnt }, { count: subCnt },
+                { data: classes }, { data: results }, { data: pending },
+            ] = await Promise.all([
+                db.from('classes').select('*', { count: 'exact', head: true }),
+                db.from('students').select('*', { count: 'exact', head: true }).eq('status', 'active'),
+                db.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'teacher').eq('status', 'active'),
+                db.from('subjects').select('*', { count: 'exact', head: true }),
+                db.from('classes').select('id,name,section'),
+                db.from('results').select('marks,max_marks,grade_letter,class_id,term,student_id').eq('status', 'approved'),
+                db.from('results').select('*,students(full_name),subjects(name),profiles!results_entered_by_fkey(full_name)').eq('status', 'pending').order('created_at', { ascending: false }).limit(8),
+            ]);
+
+            document.getElementById('s-cls').textContent = clsCnt || 0;
+            document.getElementById('s-stu').textContent = stuCnt || 0;
+            document.getElementById('s-tch').textContent = tchCnt || 0;
+            document.getElementById('s-sub').textContent = subCnt || 0;
+
+            // ── Grade Distribution Donut ──────────────────────────────
+            window._allResults = results || [];
+            window._classes = classes || [];
+            loadGrades('Term 1', document.querySelector('.tabs .tab'));
+
+            // ── Class Performance Bar ──────────────────────────────────
+            const clsMap = {};
+            (classes || []).forEach(c => { clsMap[c.id] = c.name + ' ' + (c.section || ''); });
+            const clsScores = {}, clsCounts2 = {};
+            (results || []).forEach(r => {
+                const k = clsMap[r.class_id] || '?';
+                const pct = parseFloat(r.marks || 0) / parseFloat(r.max_marks || 100) * 100;
+                clsScores[k] = (clsScores[k] || 0) + pct;
+                clsCounts2[k] = (clsCounts2[k] || 0) + 1;
+            });
+            const clsLabels = Object.keys(clsScores);
+            const clsAvgs = clsLabels.map(k => Math.round(clsScores[k] / clsCounts2[k]));
+            new Chart(document.getElementById('Chart-cls-perf'), {
+                type: 'bar',
+                data: { labels: clsLabels.length ? clsLabels : ['No Data'], datasets: [{ label: 'Avg Score (%)', data: clsAvgs.length ? clsAvgs : [0], backgroundColor: clsAvgs.map(a => a >= 70 ? 'rgba(22,163,74,.8)' : a >= 50 ? 'rgba(217,119,6,.8)' : 'rgba(220,38,38,.8)'), borderRadius: 6, borderSkipped: false }] },
+                options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { min: 0, max: 100, ticks: { callback: v => v + '%' } } } }
+            });
+
+            // ── Attendance 7 Day Line ──────────────────────────────────
+            const days = []; const labels = [];
+            for (let i = 6; i >= 0; i--) { const d = new Date(); d.setDate(d.getDate() - i); days.push(d.toISOString().split('T')[0]); labels.push(d.toLocaleDateString('en-GB', { weekday: 'short' })); }
+            const attData = await Promise.all(days.map(async d => {
+                const p = await db.from('attendance').select('*', { count: 'exact', head: true }).eq('date', d).eq('status', 'present');
+                const t = await db.from('attendance').select('*', { count: 'exact', head: true }).eq('date', d);
+                return t.count > 0 ? Math.round((p.count / t.count) * 100) : null;
+            }));
+            new Chart(document.getElementById('Chart-att'), {
+                type: 'line',
+                data: { labels, datasets: [{ label: 'Attendance %', data: attData, borderColor: '#0891b2', backgroundColor: 'rgba(8,145,178,.1)', tension: .4, fill: true, pointBackgroundColor: '#0891b2', pointRadius: 5, spanGaps: true }] },
+                options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { min: 0, max: 100, ticks: { callback: v => v + '%' } } } }
+            });
+
+            // ── Pending Grades ─────────────────────────────────────────
+            const pgEl = document.getElementById('pending-grades');
+            if (!(pending || []).length) pgEl.innerHTML = '<div class="empty" style="padding:30px"><span class="material-icons-round" style="color:var(--success)">check_circle</span><h3>All results approved!</h3></div>';
+            else pgEl.innerHTML = (pending || []).map(r => {
+                const g = getGrade(r.marks, r.max_marks);
+                return `<div style="padding:10px 0;border-bottom:1px solid var(--border-2);display:flex;gap:10px;align-items:center">
+      <div class="tbl-avi" style="width:36px;height:36px;flex-shrink:0">${initials(r.students?.full_name || '?')}</div>
+      <div style="flex:1">
+        <div class="fw-700">${r.students?.full_name || '—'} — <span style="color:var(--text-3)">${r.subjects?.name || '—'}</span></div>
+        <div class="text-muted">By ${r.profiles?.full_name || '—'} · ${r.marks}/${r.max_marks} · ${r.term}</div>
+      </div>
+      <span class="badge badge-${g.c}">${g.l}</span>
+    </div>`;
+            }).join('');
+        })();
+
+        async function loadGrades(term, btn) {
+            document.querySelectorAll('.tabs .tab').forEach(b => b.classList.remove('active'));
+            if (btn) btn.classList.add('active');
+            const data = (window._allResults || []).filter(r => r.term === term);
+            const grades = { A: 0, 'B': 0, 'C': 0, 'D': 0, 'F': 0 };
+            let totalPct = 0, cnt = 0;
+            data.forEach(r => { const g = getGrade(r.marks, r.max_marks); const l = g.l[0]; if (grades[l] !== undefined) grades[l]++; totalPct += r.marks / r.max_marks * 100; cnt++; });
+            document.getElementById('grade-avg').textContent = cnt > 0 ? Math.round(totalPct / cnt) + '%' : '—%';
+            const colors = { A: '#16a34a', B: '#0891b2', C: '#d97706', D: '#ea580c', F: '#dc2626' };
+            const vals = Object.values(grades);
+
+            if (gradeChart) gradeChart.destroy();
+            gradeChart = new Chart(document.getElementById('Chart-grades'), {
+                type: 'doughnut',
+                data: { labels: Object.keys(grades), datasets: [{ data: vals, backgroundColor: Object.values(colors), borderWidth: 0, hoverOffset: 6 }] },
+                options: { cutout: '70%', responsive: true, plugins: { legend: { display: false } } }
+            });
+            const legend = document.getElementById('grade-legend');
+            legend.innerHTML = Object.entries(grades).map(([g, n]) => `<div class="legend-item"><div class="legend-dot" style="background:${colors[g]}"></div>${g}: <strong>${n}</strong></div>`).join('');
+        }
+    </script>
+</body>
+
+</html>

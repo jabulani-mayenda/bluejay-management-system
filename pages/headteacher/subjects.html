@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Subjects | Bluejay School</title>
+    <link rel="stylesheet" href="../../assets/css/main.css">
+</head>
+
+<body>
+    <div class="app">
+        <div id="sidebar-placeholder"></div>
+        <div class="main">
+            <header class="topbar">
+                <div class="topbar-left">
+                    <div class="topbar-title">Subjects</div>
+                    <div class="topbar-path">Head Teacher / Subjects</div>
+                </div>
+            </header>
+            <div class="page-content">
+                <div class="ph">
+                    <div>
+                        <h1>Subject Management</h1>
+                        <p>Add subjects and assign teachers</p>
+                    </div>
+                    <div class="ph-actions"><button class="btn btn-primary" onclick="openModal('add-modal')"><span
+                                class="material-icons-round">add</span> Add Subject</button></div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header"><span class="material-icons-round"
+                            style="color:var(--primary)">menu_book</span>
+                        <div class="card-title">All Subjects</div>
+                        <select class="form-control" style="width:180px" id="cls-filter" onchange="loadSubjects()">
+                            <option value="">All Classes</option>
+                        </select>
+                    </div>
+                    <div class="card-body" style="padding:0">
+                        <div id="sub-list">
+                            <div class="loading">
+                                <div class="spinner"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="overlay" id="add-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <div class="modal-title" id="modal-title">Add Subject</div><button class="modal-close"
+                    onclick="closeModal('add-modal')"><span class="material-icons-round">close</span></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="edit-id">
+                <div class="form-row form-row-2">
+                    <div class="form-group"><label class="form-label">Subject Name <span
+                                class="req">*</span></label><input class="form-control" id="f-name"
+                            placeholder="e.g. Mathematics"></div>
+                    <div class="form-group"><label class="form-label">Subject Code</label><input class="form-control"
+                            id="f-code" placeholder="e.g. MATH01"></div>
+                    <div class="form-group"><label class="form-label">Class <span class="req">*</span></label><select
+                            class="form-control" id="f-class">
+                            <option value="">Select…</option>
+                        </select></div>
+                    <div class="form-group"><label class="form-label">Assign Teacher</label><select class="form-control"
+                            id="f-teacher">
+                            <option value="">None / TBA</option>
+                        </select></div>
+                </div>
+            </div>
+            <div class="modal-footer"><button class="btn btn-outline"
+                    onclick="closeModal('add-modal')">Cancel</button><button class="btn btn-primary"
+                    onclick="saveSubject()"><span class="material-icons-round">save</span> Save</button></div>
+        </div>
+    </div>
+
+    <script src="../../config.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../../assets/js/shared.js"></script>
+    <script>
+        (async () => {
+            await initApp(['head_teacher']);
+            const [cls, teachers] = await Promise.all([
+                db.from('classes').select('id,name,section').order('name'),
+                db.from('profiles').select('id,full_name').eq('role', 'teacher').eq('status', 'active').order('full_name'),
+            ]);
+            (cls.data || []).forEach(c => {
+                const o = `<option value="${c.id}">${c.name} ${c.section || ''}</option>`;
+                document.getElementById('f-class').insertAdjacentHTML('beforeend', o);
+                document.getElementById('cls-filter').insertAdjacentHTML('beforeend', o);
+            });
+            (teachers.data || []).forEach(t => document.getElementById('f-teacher').insertAdjacentHTML('beforeend', `<option value="${t.id}">${t.full_name}</option>`));
+            loadSubjects();
+        })();
+
+        async function loadSubjects() {
+            const el = document.getElementById('sub-list');
+            const cf = document.getElementById('cls-filter').value;
+            let q = db.from('subjects').select('*,classes(name,section),profiles!subjects_teacher_id_fkey(full_name)').order('name');
+            if (cf) q = q.eq('class_id', cf);
+            const { data } = await q;
+            if (!data?.length) { el.innerHTML = '<div class="empty"><span class="material-icons-round">menu_book</span><h3>No subjects yet</h3><p>Add your first subject above.</p></div>'; return; }
+            el.innerHTML = `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Subject</th><th>Code</th><th>Class</th><th>Teacher</th><th>Actions</th></tr></thead><tbody>
+    ${data.map(s => `<tr>
+      <td><div class="tbl-name">${s.name}</div></td>
+      <td><code>${s.code || '—'}</code></td>
+      <td>${s.classes?.name || '—'} ${s.classes?.section || ''}</td>
+      <td>${s.profiles?.full_name ? `<span class="badge badge-primary">${s.profiles.full_name}</span>` : '<span class="text-muted">Unassigned</span>'}</td>
+      <td><div class="tbl-actions">
+        <button class="btn btn-sm btn-outline" onclick="editSubject(${JSON.stringify(s).replace(/"/g, '&quot;')})"><span class="material-icons-round">edit</span></button>
+        <button class="btn btn-sm btn-danger"  onclick="deleteSubject('${s.id}','${s.name}')"><span class="material-icons-round">delete</span></button>
+      </div></td>
+    </tr>`).join('')}
+  </tbody></table></div>`;
+        }
+
+        async function saveSubject() {
+            const id = document.getElementById('edit-id').value;
+            const name = document.getElementById('f-name').value.trim();
+            const cls = document.getElementById('f-class').value;
+            if (!name || !cls) { showToast('Name and class required', 'error'); return; }
+            const payload = { name, code: document.getElementById('f-code').value || null, class_id: cls, teacher_id: document.getElementById('f-teacher').value || null };
+            const { error } = id ? await db.from('subjects').update(payload).eq('id', id) : await db.from('subjects').insert(payload);
+            if (error) { showToast('Error: ' + error.message, 'error'); return; }
+            showToast(id ? 'Subject updated!' : 'Subject added!'); closeModal('add-modal'); loadSubjects();
+        }
+
+        function editSubject(s) {
+            document.getElementById('edit-id').value = s.id;
+            document.getElementById('f-name').value = s.name;
+            document.getElementById('f-code').value = s.code || '';
+            document.getElementById('f-class').value = s.class_id || '';
+            document.getElementById('f-teacher').value = s.teacher_id || '';
+            document.getElementById('modal-title').textContent = 'Edit Subject';
+            openModal('add-modal');
+        }
+
+        function deleteSubject(id, name) {
+            confirmAction(`Delete subject "${name}"? This will also remove all associated results.`, async () => {
+                await db.from('subjects').delete().eq('id', id);
+                showToast('Subject deleted', 'error'); loadSubjects();
+            });
+        }
+    </script>
+</body>
+
+</html>

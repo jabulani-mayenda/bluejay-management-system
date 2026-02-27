@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Approvals | Bluejay School</title>
+    <link rel="stylesheet" href="../../assets/css/main.css">
+</head>
+
+<body>
+    <div class="app">
+        <div id="sidebar-placeholder"></div>
+        <div class="main">
+            <header class="topbar">
+                <div class="topbar-left">
+                    <div class="topbar-title">Approvals Center</div>
+                    <div class="topbar-path">System Admin / Approvals</div>
+                </div>
+            </header>
+            <div class="page-content">
+                <div class="ph">
+                    <div>
+                        <h1>Approvals Center</h1>
+                        <p>Review and approve students, staff accounts, and purchase requests</p>
+                    </div>
+                </div>
+
+                <div class="tabs">
+                    <button class="tab active" onclick="switchTab('students',this)">Students <span
+                            class="badge badge-warning" id="t-st">…</span></button>
+                    <button class="tab" onclick="switchTab('staff',this)">Staff Accounts <span
+                            class="badge badge-warning" id="t-sf">…</span></button>
+                    <button class="tab" onclick="switchTab('expenses',this)">Purchase Requests <span
+                            class="badge badge-warning" id="t-ex">…</span></button>
+                </div>
+
+                <div id="tab-students">
+                    <div class="card">
+                        <div class="card-header"><span class="material-icons-round"
+                                style="color:var(--primary)">school</span>
+                            <div class="card-title">Pending Student Registrations</div>
+                        </div>
+                        <div class="card-body" id="list-students">
+                            <div class="loading">
+                                <div class="spinner"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div id="tab-staff" style="display:none">
+                    <div class="card">
+                        <div class="card-header"><span class="material-icons-round"
+                                style="color:var(--success)">person_add</span>
+                            <div class="card-title">Pending Staff Account Requests</div>
+                        </div>
+                        <div class="card-body" id="list-staff">
+                            <div class="loading">
+                                <div class="spinner"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div id="tab-expenses" style="display:none">
+                    <div class="card">
+                        <div class="card-header"><span class="material-icons-round"
+                                style="color:var(--warning)">shopping_cart</span>
+                            <div class="card-title">Pending Purchase Requests</div>
+                        </div>
+                        <div class="card-body" id="list-expenses">
+                            <div class="loading">
+                                <div class="spinner"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reject Modal -->
+    <div class="overlay" id="reject-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <div class="modal-title">Reject — Provide Reason</div><button class="modal-close"
+                    onclick="closeModal('reject-modal')"><span class="material-icons-round">close</span></button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group"><label class="form-label">Reason for rejection <span
+                            class="req">*</span></label><textarea class="form-control" id="reject-reason"
+                        placeholder="Explain why this is being rejected…"></textarea></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="closeModal('reject-modal')">Cancel</button>
+                <button class="btn btn-danger" onclick="submitReject()">Confirm Reject</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="../../config.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../../assets/js/shared.js"></script>
+    <script>
+        let _rejectFn = null;
+
+        function switchTab(tab, btn) {
+            document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            ['students', 'staff', 'expenses'].forEach(t => document.getElementById('tab-' + t).style.display = t === tab ? '' : 'none');
+        }
+
+        function openReject(fn) { _rejectFn = fn; document.getElementById('reject-reason').value = ''; openModal('reject-modal'); }
+        function submitReject() { if (_rejectFn) { _rejectFn(document.getElementById('reject-reason').value); closeModal('reject-modal'); } }
+
+        async function approveStudent(id) {
+            await db.from('students').update({ status: 'active', approved_by: window._currentProfile.id }).eq('id', id);
+            await logActivity('Approved student', 'student', id, `Student ${id} approved`);
+            showToast('Student approved!'); loadStudents();
+        }
+        async function rejectStudent(id) {
+            openReject(async reason => {
+                await db.from('students').update({ status: 'rejected', approved_by: window._currentProfile.id }).eq('id', id);
+                await logActivity('Rejected student', 'student', id, reason);
+                showToast('Student rejected', 'error'); loadStudents();
+            });
+        }
+        async function approveStaff(id) {
+            await db.from('profiles').update({ status: 'active', approved_by: window._currentProfile.id }).eq('id', id);
+            await logActivity('Approved staff account', 'profile', id, 'Staff account activated');
+            showToast('Account approved!'); loadStaff();
+        }
+        async function rejectStaff(id) {
+            openReject(async reason => {
+                await db.from('profiles').update({ status: 'rejected', approved_by: window._currentProfile.id }).eq('id', id);
+                await logActivity('Rejected staff account', 'profile', id, reason);
+                showToast('Account rejected', 'error'); loadStaff();
+            });
+        }
+        async function approveExpense(id) {
+            await db.from('expenses').update({ status: 'approved', approved_by: window._currentProfile.id, approval_date: new Date().toISOString() }).eq('id', id);
+            await logActivity('Approved purchase', 'expense', id, 'Purchase request approved');
+            showToast('Purchase approved!'); loadExpenses();
+        }
+        async function rejectExpense(id) {
+            openReject(async reason => {
+                await db.from('expenses').update({ status: 'rejected', approved_by: window._currentProfile.id, rejection_reason: reason }).eq('id', id);
+                await logActivity('Rejected purchase', 'expense', id, reason);
+                showToast('Purchase rejected', 'error'); loadExpenses();
+            });
+        }
+
+        async function loadStudents() {
+            const el = document.getElementById('list-students');
+            const { data, count } = await db.from('students').select('*,classes(name,section),profiles!students_created_by_fkey(full_name)', { count: 'exact' }).eq('status', 'pending');
+            document.getElementById('t-st').textContent = count || 0;
+            if (!data?.length) { el.innerHTML = '<div class="empty"><span class="material-icons-round">check_circle</span><h3>No pending students</h3></div>'; return; }
+            el.innerHTML = `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Student</th><th>ID</th><th>Class</th><th>Fees Set</th><th>Added By</th><th>Date</th><th>Actions</th></tr></thead><tbody>${data.map(s => `<tr>
+      <td><div class="tbl-avatar"><div class="tbl-avi">${initials(s.full_name)}</div><div><div class="tbl-name">${s.full_name}</div><div class="tbl-sub">${s.gender || '—'} · DOB: ${formatDate(s.date_of_birth)}</div></div></div></td>
+      <td>${s.id}</td>
+      <td>${s.classes?.name || '—'} ${s.classes?.section || ''}</td>
+      <td><strong>${formatMoney(s.fees_total)}</strong></td>
+      <td>${s.profiles?.full_name || '—'}</td>
+      <td>${formatDate(s.created_at)}</td>
+      <td><div class="tbl-actions">
+        <button class="btn btn-sm btn-success" onclick="approveStudent('${s.id}')"><span class="material-icons-round">check</span> Approve</button>
+        <button class="btn btn-sm btn-danger"  onclick="rejectStudent('${s.id}')"><span class="material-icons-round">close</span> Reject</button>
+      </div></td>
+    </tr>`).join('')
+                }</tbody></table></div>`;
+        }
+
+        async function loadStaff() {
+            const el = document.getElementById('list-staff');
+            const { data, count } = await db.from('profiles').select('*', { count: 'exact' }).eq('status', 'pending').neq('role', 'system_admin');
+            document.getElementById('t-sf').textContent = count || 0;
+            if (!data?.length) { el.innerHTML = '<div class="empty"><span class="material-icons-round">check_circle</span><h3>No pending accounts</h3></div>'; return; }
+            el.innerHTML = `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Phone</th><th>Date Applied</th><th>Actions</th></tr></thead><tbody>${data.map(p => `<tr>
+      <td><div class="tbl-avatar"><div class="tbl-avi">${initials(p.full_name)}</div><div class="tbl-name">${p.full_name}</div></div></td>
+      <td>${p.email}</td>
+      <td><span class="badge badge-primary">${ROLE_LABELS[p.role] || p.role}</span></td>
+      <td>${p.phone || '—'}</td>
+      <td>${formatDate(p.created_at)}</td>
+      <td><div class="tbl-actions">
+        <button class="btn btn-sm btn-success" onclick="approveStaff('${p.id}')"><span class="material-icons-round">check</span> Approve</button>
+        <button class="btn btn-sm btn-danger"  onclick="rejectStaff('${p.id}')"><span class="material-icons-round">close</span> Reject</button>
+      </div></td>
+    </tr>`).join('')
+                }</tbody></table></div>`;
+        }
+
+        async function loadExpenses() {
+            const el = document.getElementById('list-expenses');
+            const { data, count } = await db.from('expenses').select('*,profiles!expenses_submitted_by_fkey(full_name)', { count: 'exact' }).eq('status', 'pending').order('created_at', { ascending: false });
+            document.getElementById('t-ex').textContent = count || 0;
+            if (!data?.length) { el.innerHTML = '<div class="empty"><span class="material-icons-round">check_circle</span><h3>No pending requests</h3></div>'; return; }
+            el.innerHTML = `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Item</th><th>Type</th><th>Amount</th><th>Description</th><th>Submitted By</th><th>Date</th><th>Actions</th></tr></thead><tbody>${data.map(e => `<tr>
+      <td><div class="tbl-name">${e.title}</div></td>
+      <td>${e.expense_type || '—'}</td>
+      <td><strong>${formatMoney(e.amount)}</strong></td>
+      <td style="max-width:200px;font-size:12px;color:var(--text-2)">${e.description || '—'}</td>
+      <td>${e.profiles?.full_name || '—'}</td>
+      <td>${formatDate(e.created_at)}</td>
+      <td><div class="tbl-actions">
+        <button class="btn btn-sm btn-success" onclick="approveExpense('${e.id}')"><span class="material-icons-round">check</span> Approve</button>
+        <button class="btn btn-sm btn-danger"  onclick="rejectExpense('${e.id}')"><span class="material-icons-round">close</span> Reject</button>
+      </div></td>
+    </tr>`).join('')
+                }</tbody></table></div>`;
+        }
+
+        (async () => {
+            await initApp(['system_admin']);
+            await Promise.all([loadStudents(), loadStaff(), loadExpenses()]);
+        })();
+    </script>
+</body>
+
+</html>

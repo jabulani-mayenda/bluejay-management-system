@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fee Tracker | Bluejay School</title>
+    <link rel="stylesheet" href="../../assets/css/main.css">
+</head>
+
+<body>
+    <div class="app">
+        <div id="sidebar-placeholder"></div>
+        <div class="main">
+            <header class="topbar">
+                <div class="topbar-left">
+                    <div class="topbar-title">Fee Tracker</div>
+                    <div class="topbar-path">Admin / Fees</div>
+                </div>
+                <div class="topbar-right">
+                    <button class="btn btn-outline btn-sm" onclick="exportFees()"><span
+                            class="material-icons-round">download</span> Export CSV</button>
+                    <button class="btn btn-outline btn-sm" onclick="printReport()"><span
+                            class="material-icons-round">print</span> Print</button>
+                </div>
+            </header>
+            <div class="page-content">
+                <div class="ph">
+                    <div>
+                        <h1>Fee Tracker</h1>
+                        <p>Track each student's negotiated fees and payment progress</p>
+                    </div>
+                </div>
+
+                <!-- Summary Cards -->
+                <div class="stat-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon si-teal"><span class="material-icons-round">payments</span></div>
+                        <div class="stat-info">
+                            <div class="stat-label">Total Fees Expected</div>
+                            <div class="stat-value" id="f-expected">—</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon si-green"><span class="material-icons-round">check_circle</span></div>
+                        <div class="stat-info">
+                            <div class="stat-label">Total Collected</div>
+                            <div class="stat-value" id="f-collected">—</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon si-red"><span class="material-icons-round">money_off</span></div>
+                        <div class="stat-info">
+                            <div class="stat-label">Outstanding</div>
+                            <div class="stat-value" id="f-outstanding">—</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon si-green"><span class="material-icons-round">done_all</span></div>
+                        <div class="stat-info">
+                            <div class="stat-label">Fully Paid</div>
+                            <div class="stat-value" id="f-full">— students</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header"><span class="material-icons-round"
+                            style="color:var(--primary)">payments</span>
+                        <div class="card-title">Student Fee Status</div>
+                        <div class="tabs" style="margin:0">
+                            <button class="tab active" onclick="setFilter('all',this)">All</button>
+                            <button class="tab" onclick="setFilter('paid',this)">Paid</button>
+                            <button class="tab" onclick="setFilter('partial',this)">Partial</button>
+                            <button class="tab" onclick="setFilter('unpaid',this)">Unpaid</button>
+                        </div>
+                    </div>
+                    <div class="card-body" style="padding:16px">
+                        <div class="filter-bar">
+                            <div class="search-box"><span class="material-icons-round">search</span><input type="text"
+                                    id="fee-search" placeholder="Search student…" oninput="applyFilters()"></div>
+                            <select class="form-control" style="width:160px" id="cls-filter" onchange="applyFilters()">
+                                <option value="">All Classes</option>
+                            </select>
+                        </div>
+                        <div id="fee-table">
+                            <div class="loading">
+                                <div class="spinner"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Record Payment Modal -->
+    <div class="overlay" id="pay-modal">
+        <div class="modal">
+            <div class="modal-header"><span class="material-icons-round" style="color:var(--success)">payments</span>
+                <div class="modal-title" id="pay-title">Record Payment</div><button class="modal-close"
+                    onclick="closeModal('pay-modal')"><span class="material-icons-round">close</span></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="pay-sid">
+                <div class="form-row form-row-2">
+                    <div class="form-group"><label class="form-label">Amount Received (K) <span
+                                class="req">*</span></label><input class="form-control" id="pay-amount" type="number"
+                            min="0.01" step="0.01" placeholder="0.00"></div>
+                    <div class="form-group"><label class="form-label">Payment Date</label><input class="form-control"
+                            id="pay-date" type="date"></div>
+                    <div class="form-group"><label class="form-label">Payment Method</label><select class="form-control"
+                            id="pay-method">
+                            <option>Cash</option>
+                            <option>Mobile Money</option>
+                            <option>Bank Transfer</option>
+                            <option>Cheque</option>
+                        </select></div>
+                    <div class="form-group"><label class="form-label">Receipt Number</label><input class="form-control"
+                            id="pay-receipt" placeholder="Optional"></div>
+                </div>
+                <div class="form-group"><label class="form-label">Notes</label><textarea class="form-control"
+                        id="pay-notes" placeholder="Any notes…" style="height:60px"></textarea></div>
+            </div>
+            <div class="modal-footer"><button class="btn btn-outline"
+                    onclick="closeModal('pay-modal')">Cancel</button><button class="btn btn-success"
+                    onclick="savePayment()"><span class="material-icons-round">save</span> Record Payment</button></div>
+        </div>
+    </div>
+
+    <!-- Payment History Modal -->
+    <div class="overlay" id="hist-modal">
+        <div class="modal modal-lg">
+            <div class="modal-header">
+                <div class="modal-title" id="hist-title">Payment History</div><button class="modal-close"
+                    onclick="closeModal('hist-modal')"><span class="material-icons-round">close</span></button>
+            </div>
+            <div class="modal-body" id="hist-body"></div>
+        </div>
+    </div>
+
+    <script src="../../config.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../../assets/js/shared.js"></script>
+    <script>
+        let _students = [], _feeFilter = 'all';
+
+        (async () => {
+            await initApp(['admin', 'system_admin']);
+            document.getElementById('pay-date').value = new Date().toISOString().split('T')[0];
+            const { data: cls } = await db.from('classes').select('id,name,section').order('name');
+            (cls || []).forEach(c => document.getElementById('cls-filter').insertAdjacentHTML('beforeend', `<option value="${c.id}">${c.name} ${c.section || ''}</option>`));
+            await loadFees();
+        })();
+
+        function setFilter(f, btn) { document.querySelectorAll('.tabs .tab').forEach(b => b.classList.remove('active')); btn.classList.add('active'); _feeFilter = f; applyFilters(); }
+
+        async function loadFees() {
+            const { data } = await db.from('students').select('*,classes(name,section)').eq('status', 'active').order('full_name');
+            _students = data || [];
+
+            let exp = 0, col = 0, full = 0;
+            _students.forEach(s => { exp += parseFloat(s.fees_total || 0); col += parseFloat(s.fees_paid || 0); if (parseFloat(s.fees_paid || 0) >= parseFloat(s.fees_total || 0) && parseFloat(s.fees_total || 0) > 0) full++; });
+            document.getElementById('f-expected').textContent = formatMoney(exp);
+            document.getElementById('f-collected').textContent = formatMoney(col);
+            document.getElementById('f-outstanding').textContent = formatMoney(exp - col);
+            document.getElementById('f-full').textContent = full + ' students';
+            applyFilters();
+        }
+
+        function applyFilters() {
+            const search = document.getElementById('fee-search').value.toLowerCase();
+            const cls = document.getElementById('cls-filter').value;
+            let list = _students;
+            if (cls) list = list.filter(s => s.class_id === cls);
+            if (search) list = list.filter(s => s.full_name.toLowerCase().includes(search) || s.id.toLowerCase().includes(search));
+            if (_feeFilter === 'paid') list = list.filter(s => parseFloat(s.fees_paid || 0) >= parseFloat(s.fees_total || 0) && parseFloat(s.fees_total || 0) > 0);
+            if (_feeFilter === 'partial') list = list.filter(s => parseFloat(s.fees_paid || 0) > 0 && parseFloat(s.fees_paid || 0) < parseFloat(s.fees_total || 0));
+            if (_feeFilter === 'unpaid') list = list.filter(s => parseFloat(s.fees_paid || 0) === 0);
+            renderFeeTable(list);
+        }
+
+        function renderFeeTable(list) {
+            const el = document.getElementById('fee-table');
+            if (!list.length) { el.innerHTML = '<div class="empty"><span class="material-icons-round">payments</span><h3>No students match</h3></div>'; return; }
+            el.innerHTML = `<div class="tbl-wrap"><table class="tbl">
+    <thead><tr><th>Student</th><th>Class</th><th>Total Fees</th><th>Paid</th><th>Balance</th><th>Progress</th><th>Status</th><th>Actions</th></tr></thead>
+    <tbody>${list.map(s => {
+                const paid = parseFloat(s.fees_paid || 0), total = parseFloat(s.fees_total || 0), bal = total - paid;
+                const pct = total > 0 ? Math.min(100, Math.round((paid / total) * 100)) : 0;
+                const col = pct >= 100 ? 'green' : pct > 0 ? 'orange' : 'red';
+                return `<tr>
+        <td><div class="tbl-avatar"><div class="tbl-avi">${initials(s.full_name)}</div><div><div class="tbl-name">${s.full_name}</div><div class="tbl-sub">${s.id}</div></div></div></td>
+        <td>${s.classes?.name || '—'} ${s.classes?.section || ''}</td>
+        <td>${formatMoney(total)}</td>
+        <td style="color:var(--success);font-weight:700">${formatMoney(paid)}</td>
+        <td style="color:${bal > 0 ? 'var(--danger)' : 'var(--success)'};font-weight:700">${formatMoney(bal)}</td>
+        <td style="min-width:120px"><div style="font-size:11px;margin-bottom:3px">${pct}%</div><div class="prog"><div class="prog-fill ${col}" style="width:${pct}%"></div></div></td>
+        <td>${feeStatus(paid, total)}</td>
+        <td><div class="tbl-actions">
+          <button class="btn btn-sm btn-success" onclick="openPayment('${s.id}','${s.full_name}')"><span class="material-icons-round">add</span> Pay</button>
+          <button class="btn btn-sm btn-outline" onclick="showHistory('${s.id}','${s.full_name}')"><span class="material-icons-round">history</span></button>
+        </div></td>
+      </tr>`;
+            }).join('')}
+    </tbody></table></div>`;
+        }
+
+        function openPayment(sid, name) {
+            document.getElementById('pay-sid').value = sid;
+            document.getElementById('pay-title').textContent = 'Record Payment — ' + name;
+            document.getElementById('pay-amount').value = '';
+            openModal('pay-modal');
+        }
+
+        async function savePayment() {
+            const sid = document.getElementById('pay-sid').value;
+            const amt = parseFloat(document.getElementById('pay-amount').value);
+            if (!amt || amt <= 0) { showToast('Enter a valid amount', 'error'); return; }
+            const { error } = await db.from('fee_payments').insert({
+                student_id: sid, amount: amt,
+                payment_date: document.getElementById('pay-date').value,
+                payment_method: document.getElementById('pay-method').value,
+                receipt_number: document.getElementById('pay-receipt').value || null,
+                notes: document.getElementById('pay-notes').value || null,
+                recorded_by: window._currentProfile.id,
+            });
+            if (error) { showToast('Error: ' + error.message, 'error'); return; }
+
+            // Update fees_paid on student
+            const stu = _students.find(s => s.id === sid);
+            const newPaid = parseFloat(stu.fees_paid || 0) + amt;
+            await db.from('students').update({ fees_paid: newPaid }).eq('id', sid);
+            await logActivity('Recorded fee payment', 'student', sid, `K${amt} recorded for ${sid}`);
+            showToast(`Payment of ${formatMoney(amt)} recorded!`);
+            closeModal('pay-modal'); loadFees();
+        }
+
+        async function showHistory(sid, name) {
+            document.getElementById('hist-title').textContent = name + ' — Payment History';
+            const { data } = await db.from('fee_payments').select('*').eq('student_id', sid).order('payment_date', { ascending: false });
+            const el = document.getElementById('hist-body');
+            if (!data?.length) { el.innerHTML = '<div class="empty"><span class="material-icons-round">payments</span><h3>No payments recorded yet</h3></div>'; }
+            else el.innerHTML = `<table class="tbl"><thead><tr><th>Date</th><th>Amount</th><th>Method</th><th>Receipt</th><th>Notes</th></tr></thead><tbody>${data.map(p => `<tr><td>${formatDate(p.payment_date)}</td><td style="font-weight:700;color:var(--success)">${formatMoney(p.amount)}</td><td>${p.payment_method || '—'}</td><td>${p.receipt_number || '—'}</td><td>${p.notes || '—'}</td></tr>`).join('')}</tbody></table>`;
+            openModal('hist-modal');
+        }
+
+        function exportFees() {
+            exportCSV(_students.map(s => ({
+                name: s.full_name, id: s.id, class: (s.classes?.name || '') + (s.classes?.section ? '-' + s.classes.section : ''),
+                fees_total: s.fees_total, fees_paid: s.fees_paid, balance: parseFloat(s.fees_total || 0) - parseFloat(s.fees_paid || 0),
+                status: parseFloat(s.fees_paid || 0) >= parseFloat(s.fees_total || 0) ? 'Paid' : parseFloat(s.fees_paid || 0) > 0 ? 'Partial' : 'Unpaid'
+            })), 'fees-report.csv', ['name', 'id', 'class', 'fees_total', 'fees_paid', 'balance', 'status']);
+        }
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Attendance | Bluejay School</title>
+    <link rel="stylesheet" href="../../assets/css/main.css">
+</head>
+
+<body>
+    <div class="app">
+        <div id="sidebar-placeholder"></div>
+        <div class="main">
+            <header class="topbar">
+                <div class="topbar-left">
+                    <div class="topbar-title">Attendance</div>
+                    <div class="topbar-path">Teacher / Attendance</div>
+                </div>
+                <div class="topbar-right"><button class="btn btn-sm btn-outline" onclick="printReport()"><span
+                            class="material-icons-round">print</span> Print</button></div>
+            </header>
+            <div class="page-content">
+                <div class="ph">
+                    <div>
+                        <h1>Mark Attendance</h1>
+                        <p>Record daily student attendance</p>
+                    </div>
+                </div>
+
+                <div class="card mb-20">
+                    <div class="card-body">
+                        <div class="form-row form-row-3">
+                            <div class="form-group"><label class="form-label">Class</label><select class="form-control"
+                                    id="cls-sel" onchange="loadStudents()">
+                                    <option value="">Select class…</option>
+                                </select></div>
+                            <div class="form-group"><label class="form-label">Date</label><input class="form-control"
+                                    type="date" id="att-date" onchange="loadStudents()"></div>
+                            <div class="form-group" style="display:flex;align-items:flex-end;gap:8px">
+                                <button class="btn btn-outline w-full" onclick="markAll('present')"><span
+                                        class="material-icons-round">done_all</span> All Present</button>
+                                <button class="btn btn-outline" onclick="markAll('absent')"><span
+                                        class="material-icons-round">close</span> All Absent</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="att-list">
+                    <div class="empty"><span class="material-icons-round">people</span>
+                        <h3>Select a class to begin</h3>
+                    </div>
+                </div>
+                <div id="save-btn" style="display:none;margin-top:16px"><button class="btn btn-primary btn-lg w-full"
+                        onclick="saveAttendance()"><span class="material-icons-round">save</span> Save
+                        Attendance</button></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="../../config.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../../assets/js/shared.js"></script>
+    <script>
+        let _students = [], _existing = {};
+
+        (async () => {
+            const r = await initApp(['teacher', 'head_teacher']);
+            if (!r) return;
+
+            document.getElementById('att-date').value = new Date().toISOString().split('T')[0];
+
+            let clsQ = db.from('subjects').select('class_id,classes(id,name,section)').eq('teacher_id', r.profile.id);
+            if (r.profile.role === 'head_teacher') clsQ = db.from('classes').select('id,name,section');
+            const { data: raw } = await clsQ;
+
+            // Deduplicate classes
+            const seen = new Set();
+            const classes = (r.profile.role === 'head_teacher' ? raw : (raw || []).map(s => s.classes)).filter(c => {
+                if (!c || seen.has(c.id)) return false;
+                seen.add(c.id); return true;
+            });
+            classes.forEach(c => document.getElementById('cls-sel').insertAdjacentHTML('beforeend', `<option value="${c.id}">${c.name} ${c.section || ''}</option>`));
+        })();
+
+        async function loadStudents() {
+            const cls = document.getElementById('cls-sel').value;
+            const date = document.getElementById('att-date').value;
+            if (!cls || !date) return;
+
+            const el = document.getElementById('att-list');
+            el.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+
+            const [stuRes, existRes] = await Promise.all([
+                db.from('students').select('id,full_name,gender').eq('class_id', cls).eq('status', 'active').order('full_name'),
+                db.from('attendance').select('student_id,status').eq('class_id', cls).eq('date', date),
+            ]);
+            _students = stuRes.data || [];
+            _existing = Object.fromEntries((existRes.data || []).map(r => [r.student_id, r.status]));
+
+            if (!_students.length) { el.innerHTML = '<div class="empty"><span class="material-icons-round">school</span><h3>No students in class</h3></div>'; return; }
+
+            document.getElementById('save-btn').style.display = 'block';
+            el.innerHTML = `<div class="card"><div class="card-header"><span class="material-icons-round" style="color:var(--primary)">face</span><div class="card-title">Students — ${_students.length} total</div></div>
+    <div class="card-body" style="padding-top:8px">${_students.map(s => {
+                const cur = _existing[s.id] || 'present';
+                return `<div class="flex gap-10" style="padding:12px 0;border-bottom:1px solid var(--border-2);align-items:center">
+        <div class="tbl-avi">${initials(s.full_name)}</div>
+        <div style="flex:1"><div class="fw-700">${s.full_name}</div><div class="text-muted">${s.id}</div></div>
+        <div class="flex gap-6">
+          ${['present', 'absent', 'late', 'excused'].map(st => `<button class="btn btn-sm ${cur === st ? (st === 'present' ? 'btn-success' : st === 'absent' ? 'btn-danger' : st === 'late' ? 'btn-warning' : 'btn-outline') : 'btn-outline'}" id="btn-${s.id}-${st}" onclick="toggle('${s.id}','${st}')">${st.charAt(0).toUpperCase() + st.slice(1)}</button>`).join('')}
+        </div>
+      </div>`;
+            }).join('')}</div></div>`;
+        }
+
+        function toggle(sid, status) {
+            _existing[sid] = status;
+            ['present', 'absent', 'late', 'excused'].forEach(st => {
+                const btn = document.getElementById(`btn-${sid}-${st}`);
+                if (!btn) return;
+                btn.className = `btn btn-sm ${status === st ? (st === 'present' ? 'btn-success' : st === 'absent' ? 'btn-danger' : st === 'late' ? 'btn-warning' : 'btn-purple') : 'btn-outline'}`;
+            });
+        }
+
+        function markAll(status) { _students.forEach(s => toggle(s.id, status)); }
+
+        async function saveAttendance() {
+            const cls = document.getElementById('cls-sel').value;
+            const date = document.getElementById('att-date').value;
+            if (!cls || !date) { showToast('Select class and date', 'error'); return; }
+
+            const rows = _students.map(s => ({
+                student_id: s.id, class_id: cls, date,
+                status: _existing[s.id] || 'present',
+                marked_by: window._currentProfile.id,
+            }));
+            const { error } = await db.from('attendance').upsert(rows, { onConflict: 'student_id,date' });
+            if (error) { showToast('Error: ' + error.message, 'error'); return; }
+            const present = rows.filter(r => r.status === 'present').length;
+            showToast(`Attendance saved! ${present}/${rows.length} present`);
+        }
+    </script>
+</body>
+
+</html>

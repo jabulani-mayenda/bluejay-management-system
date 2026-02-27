@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Finance | Bluejay School</title>
+    <link rel="stylesheet" href="../../assets/css/main.css">
+</head>
+
+<body>
+    <div class="app">
+        <div id="sidebar-placeholder"></div>
+        <div class="main">
+            <header class="topbar">
+                <div class="topbar-left">
+                    <div class="topbar-title">Financial Overview</div>
+                    <div class="topbar-path">System Admin / Finance</div>
+                </div>
+                <div class="topbar-right"><button class="btn btn-sm btn-outline" onclick="printReport()"><span
+                            class="material-icons-round">print</span> Print Report</button></div>
+            </header>
+            <div class="page-content">
+                <div class="ph">
+                    <div>
+                        <h1>Financial Overview</h1>
+                        <p>School income, expenses, and profit/loss analysis</p>
+                    </div>
+                </div>
+
+                <!-- Summary -->
+                <div class="stat-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon si-green"><span class="material-icons-round">trending_up</span></div>
+                        <div class="stat-info">
+                            <div class="stat-label">Total Fees Collected</div>
+                            <div class="stat-value" id="f-income">—</div>
+                            <div class="stat-meta">All active students</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon si-blue"><span class="material-icons-round">account_balance_wallet</span>
+                        </div>
+                        <div class="stat-info">
+                            <div class="stat-label">Total Fees Expected</div>
+                            <div class="stat-value" id="f-expected">—</div>
+                            <div class="stat-meta">Negotiated totals</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon si-red"><span class="material-icons-round">receipt_long</span></div>
+                        <div class="stat-info">
+                            <div class="stat-label">Total Expenses</div>
+                            <div class="stat-value" id="f-expenses">—</div>
+                            <div class="stat-meta">Approved purchases</div>
+                        </div>
+                    </div>
+                    <div class="stat-card" id="pl-card">
+                        <div class="stat-icon" id="pl-icon"><span class="material-icons-round">balance</span></div>
+                        <div class="stat-info">
+                            <div class="stat-label" id="pl-label">Net Balance</div>
+                            <div class="stat-value" id="f-net">—</div>
+                            <div class="stat-meta" id="pl-meta">Income − Expenses</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid-2 mt-20">
+                    <!-- Fee Collection Breakdown -->
+                    <div class="card">
+                        <div class="card-header"><span class="material-icons-round"
+                                style="color:var(--primary)">payments</span>
+                            <div class="card-title">Fee Collection by Class</div>
+                        </div>
+                        <div class="card-body" id="fee-by-class">
+                            <div class="loading">
+                                <div class="spinner"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Expense Breakdown by Category -->
+                    <div class="card">
+                        <div class="card-header"><span class="material-icons-round"
+                                style="color:var(--danger)">pie_chart</span>
+                            <div class="card-title">Expenses by Category</div>
+                        </div>
+                        <div class="card-body" id="exp-by-cat">
+                            <div class="loading">
+                                <div class="spinner"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Payments -->
+                <div class="card mt-20">
+                    <div class="card-header"><span class="material-icons-round"
+                            style="color:var(--success)">receipt</span>
+                        <div class="card-title">Recent Fee Payments</div>
+                    </div>
+                    <div class="card-body" style="padding:0">
+                        <div id="recent-pay">
+                            <div class="loading">
+                                <div class="spinner"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Approved Expenses -->
+                <div class="card mt-20">
+                    <div class="card-header"><span class="material-icons-round"
+                            style="color:var(--warning)">receipt_long</span>
+                        <div class="card-title">Approved Expenses</div>
+                    </div>
+                    <div class="card-body" style="padding:0">
+                        <div id="exp-list">
+                            <div class="loading">
+                                <div class="spinner"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="../../config.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../../assets/js/shared.js"></script>
+    <script>
+        (async () => {
+            await initApp(['system_admin']);
+            const [paymentsRes, studentsRes, expensesRes] = await Promise.all([
+                db.from('fee_payments').select('amount,payment_date,student_id,students(full_name,class_id,classes(name,section))').order('payment_date', { ascending: false }),
+                db.from('students').select('fees_total,fees_paid,class_id,classes(name,section)').eq('status', 'active'),
+                db.from('expenses').select('*,profiles!expenses_submitted_by_fkey(full_name)').eq('status', 'approved').order('created_at', { ascending: false }),
+            ]);
+
+            const payments = paymentsRes.data || [];
+            const students = studentsRes.data || [];
+            const expenses = expensesRes.data || [];
+
+            const income = payments.reduce((s, p) => s + parseFloat(p.amount || 0), 0);
+            const expected = students.reduce((s, s2) => s + parseFloat(s2.fees_total || 0), 0);
+            const expTotal = expenses.reduce((s, e) => s + parseFloat(e.amount || 0), 0);
+            const net = income - expTotal;
+
+            document.getElementById('f-income').textContent = formatMoney(income);
+            document.getElementById('f-expected').textContent = formatMoney(expected);
+            document.getElementById('f-expenses').textContent = formatMoney(expTotal);
+            document.getElementById('f-net').textContent = formatMoney(Math.abs(net));
+
+            const plIcon = document.getElementById('pl-icon');
+            const plLabel = document.getElementById('pl-label');
+            const plMeta = document.getElementById('pl-meta');
+            if (net >= 0) {
+                plIcon.className = 'stat-icon si-green'; plIcon.querySelector('span').textContent = 'trending_up';
+                plLabel.textContent = 'Net Profit'; plLabel.style.color = 'var(--success)';
+                plMeta.innerHTML = '<span style="color:var(--success)">● School is in profit</span>';
+            } else {
+                plIcon.className = 'stat-icon si-red'; plIcon.querySelector('span').textContent = 'trending_down';
+                plLabel.textContent = 'Net Loss'; plLabel.style.color = 'var(--danger)';
+                plMeta.innerHTML = '<span style="color:var(--danger)">● School is at a loss</span>';
+            }
+
+            // Fee by class
+            const clsMap = {};
+            students.forEach(s => {
+                const k = (s.classes?.name || 'Unknown') + ' ' + (s.classes?.section || '');
+                if (!clsMap[k]) clsMap[k] = { exp: 0, paid: 0 };
+                clsMap[k].exp += parseFloat(s.fees_total || 0);
+                clsMap[k].paid += parseFloat(s.fees_paid || 0);
+            });
+            const fbcEl = document.getElementById('fee-by-class');
+            const clsEntries = Object.entries(clsMap).sort((a, b) => b[1].paid - a[1].paid);
+            if (!clsEntries.length) fbcEl.innerHTML = '<div class="empty"><span class="material-icons-round">class</span><h3>No data</h3></div>';
+            else fbcEl.innerHTML = clsEntries.map(([k, v]) => {
+                const pct = v.exp > 0 ? Math.round((v.paid / v.exp) * 100) : 0;
+                return `<div style="padding:10px 0;border-bottom:1px solid var(--border-2)">
+      <div class="flex-between" style="margin-bottom:4px"><span class="fw-700">Class ${k}</span><span style="color:var(--success);font-weight:700">${formatMoney(v.paid)} / ${formatMoney(v.exp)}</span></div>
+      <div class="prog"><div class="prog-fill ${pct >= 80 ? 'green' : pct >= 50 ? 'orange' : 'red'}" style="width:${pct}%"></div></div>
+    </div>`;
+            }).join('');
+
+            // Expenses by category
+            const catMap = {};
+            expenses.forEach(e => { catMap[e.expense_type || 'Other'] = (catMap[e.expense_type || 'Other'] || 0) + parseFloat(e.amount || 0); });
+            const catEntries = Object.entries(catMap).sort((a, b) => b[1] - a[1]);
+            const ebcEl = document.getElementById('exp-by-cat');
+            if (!catEntries.length) ebcEl.innerHTML = '<div class="empty"><span class="material-icons-round">pie_chart</span><h3>No expenses</h3></div>';
+            else ebcEl.innerHTML = catEntries.map(([cat, amt]) => {
+                const pct = expTotal > 0 ? Math.round((amt / expTotal) * 100) : 0;
+                return `<div style="padding:10px 0;border-bottom:1px solid var(--border-2)">
+      <div class="flex-between" style="margin-bottom:4px"><span class="fw-700">${cat}</span><span style="color:var(--danger);font-weight:700">${formatMoney(amt)} (${pct}%)</span></div>
+      <div class="prog"><div class="prog-fill red" style="width:${pct}%"></div></div>
+    </div>`;
+            }).join('');
+
+            // Recent payments table
+            const rpEl = document.getElementById('recent-pay');
+            if (!payments.length) rpEl.innerHTML = '<div class="empty"><span class="material-icons-round">payments</span><h3>No payments yet</h3></div>';
+            else rpEl.innerHTML = `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Date</th><th>Student</th><th>Class</th><th>Amount</th></tr></thead><tbody>
+    ${payments.slice(0, 20).map(p => `<tr><td>${formatDate(p.payment_date)}</td><td>${p.students?.full_name || '—'}</td><td>${p.students?.classes?.name || '—'}</td><td style="color:var(--success);font-weight:700">${formatMoney(p.amount)}</td></tr>`).join('')}
+  </tbody></table></div>`;
+
+            // Approved expenses
+            const expEl = document.getElementById('exp-list');
+            if (!expenses.length) expEl.innerHTML = '<div class="empty"><span class="material-icons-round">receipt_long</span><h3>No approved expenses</h3></div>';
+            else expEl.innerHTML = `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Item</th><th>Category</th><th>Amount</th><th>Submitted By</th><th>Approved</th></tr></thead><tbody>
+    ${expenses.slice(0, 20).map(e => `<tr><td>${e.title}</td><td>${e.expense_type || '—'}</td><td style="color:var(--danger);font-weight:700">${formatMoney(e.amount)}</td><td>${e.profiles?.full_name || '—'}</td><td>${formatDate(e.approval_date)}</td></tr>`).join('')}
+  </tbody></table></div>`;
+        })();
+    </script>
+</body>
+
+</html>

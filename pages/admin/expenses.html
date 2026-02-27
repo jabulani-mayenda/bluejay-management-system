@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Expenses | Bluejay School</title>
+    <link rel="stylesheet" href="../../assets/css/main.css">
+</head>
+
+<body>
+    <div class="app">
+        <div id="sidebar-placeholder"></div>
+        <div class="main">
+            <header class="topbar">
+                <div class="topbar-left">
+                    <div class="topbar-title">Purchase Requests</div>
+                    <div class="topbar-path">Admin / Expenses</div>
+                </div>
+            </header>
+            <div class="page-content">
+                <div class="ph">
+                    <div>
+                        <h1>Purchase Requests</h1>
+                        <p>Submit expense requests for System Admin approval</p>
+                    </div>
+                    <div class="ph-actions"><button class="btn btn-primary" onclick="openModal('add-modal')"><span
+                                class="material-icons-round">add</span> New Request</button></div>
+                </div>
+
+                <div class="stat-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon si-orange"><span class="material-icons-round">pending_actions</span></div>
+                        <div class="stat-info">
+                            <div class="stat-label">Pending</div>
+                            <div class="stat-value" id="e-pending">—</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon si-green"><span class="material-icons-round">check_circle</span></div>
+                        <div class="stat-info">
+                            <div class="stat-label">Approved</div>
+                            <div class="stat-value" id="e-approved">—</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon si-red"><span class="material-icons-round">cancel</span></div>
+                        <div class="stat-info">
+                            <div class="stat-label">Rejected</div>
+                            <div class="stat-value" id="e-rejected">—</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon si-teal"><span class="material-icons-round">payments</span></div>
+                        <div class="stat-info">
+                            <div class="stat-label">Total Approved</div>
+                            <div class="stat-value" id="e-total">—</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header"><span class="material-icons-round"
+                            style="color:var(--warning)">shopping_cart</span>
+                        <div class="card-title">My Purchase Requests</div>
+                        <div class="tabs" style="margin:0">
+                            <button class="tab active" onclick="setF('all',this)">All</button>
+                            <button class="tab" onclick="setF('pending',this)">Pending</button>
+                            <button class="tab" onclick="setF('approved',this)">Approved</button>
+                            <button class="tab" onclick="setF('rejected',this)">Rejected</button>
+                        </div>
+                    </div>
+                    <div class="card-body" style="padding:16px">
+                        <div id="exp-list">
+                            <div class="loading">
+                                <div class="spinner"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ADD REQUEST MODAL -->
+    <div class="overlay" id="add-modal">
+        <div class="modal">
+            <div class="modal-header"><span class="material-icons-round"
+                    style="color:var(--primary)">shopping_cart</span>
+                <div class="modal-title">New Purchase Request</div><button class="modal-close"
+                    onclick="closeModal('add-modal')"><span class="material-icons-round">close</span></button>
+            </div>
+            <div class="modal-body">
+                <div class="form-row form-row-2">
+                    <div class="form-group"><label class="form-label">Item / Title <span
+                                class="req">*</span></label><input class="form-control" id="a-title"
+                            placeholder="e.g. Whiteboard markers"></div>
+                    <div class="form-group"><label class="form-label">Category <span class="req">*</span></label><select
+                            class="form-control" id="a-type">
+                            <option value="">Select…</option>
+                            <option>Stationery</option>
+                            <option>Furniture</option>
+                            <option>Equipment</option>
+                            <option>Cleaning Supplies</option>
+                            <option>Food & Kitchen</option>
+                            <option>Repairs</option>
+                            <option>Sports Equipment</option>
+                            <option>Books & Printing</option>
+                            <option>Other</option>
+                        </select></div>
+                    <div class="form-group"><label class="form-label">Amount (K) <span
+                                class="req">*</span></label><input class="form-control" id="a-amount" type="number"
+                            min="0" placeholder="0.00"></div>
+                    <div class="form-group"><label class="form-label">Priority</label><select class="form-control"
+                            id="a-priority">
+                            <option>Normal</option>
+                            <option>Urgent</option>
+                            <option>Low</option>
+                        </select></div>
+                </div>
+                <div class="form-group"><label class="form-label">Description / Justification</label><textarea
+                        class="form-control" id="a-desc"
+                        placeholder="Why is this needed? Where will it be bought?"></textarea></div>
+            </div>
+            <div class="modal-footer"><button class="btn btn-outline"
+                    onclick="closeModal('add-modal')">Cancel</button><button class="btn btn-primary"
+                    onclick="saveRequest()"><span class="material-icons-round">send</span> Submit Request</button></div>
+        </div>
+    </div>
+
+    <script src="../../config.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../../assets/js/shared.js"></script>
+    <script>
+        let _exps = [], _filter = 'all';
+
+        (async () => {
+            await initApp(['admin']);
+            await loadExpenses();
+        })();
+
+        function setF(f, btn) { document.querySelectorAll('.tabs .tab').forEach(b => b.classList.remove('active')); btn.classList.add('active'); _filter = f; render(); }
+
+        async function loadExpenses() {
+            const { data } = await db.from('expenses').select('*').eq('submitted_by', window._currentProfile.id).order('created_at', { ascending: false });
+            _exps = data || [];
+            const p = _exps.filter(e => e.status === 'pending').length;
+            const a = _exps.filter(e => e.status === 'approved');
+            const r = _exps.filter(e => e.status === 'rejected').length;
+            document.getElementById('e-pending').textContent = p;
+            document.getElementById('e-approved').textContent = a.length;
+            document.getElementById('e-rejected').textContent = r;
+            document.getElementById('e-total').textContent = formatMoney(a.reduce((s, e) => s + parseFloat(e.amount || 0), 0));
+            render();
+        }
+
+        function render() {
+            const el = document.getElementById('exp-list');
+            const list = _filter === 'all' ? _exps : _exps.filter(e => e.status === _filter);
+            if (!list.length) { el.innerHTML = '<div class="empty"><span class="material-icons-round">shopping_cart</span><h3>No requests</h3></div>'; return; }
+            el.innerHTML = `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Item</th><th>Category</th><th>Amount</th><th>Description</th><th>Status</th><th>Date</th><th>Reason</th></tr></thead><tbody>
+    ${list.map(e => `<tr>
+      <td><div class="tbl-name">${e.title}</div></td>
+      <td>${e.expense_type || '—'}</td>
+      <td style="font-weight:700">${formatMoney(e.amount)}</td>
+      <td style="max-width:200px;font-size:12px;color:var(--text-2)">${e.description || '—'}</td>
+      <td><span class="badge ${e.status === 'approved' ? 'badge-success' : e.status === 'rejected' ? 'badge-danger' : 'badge-warning'}">${e.status}</span></td>
+      <td>${formatDate(e.created_at)}</td>
+      <td style="font-size:12px;color:var(--danger)">${e.rejection_reason || '—'}</td>
+    </tr>`).join('')}
+  </tbody></table></div>`;
+        }
+
+        async function saveRequest() {
+            const title = document.getElementById('a-title').value.trim();
+            const type = document.getElementById('a-type').value;
+            const amount = parseFloat(document.getElementById('a-amount').value);
+            if (!title || !type || !amount) { showToast('Fill all required fields', 'error'); return; }
+            const { error } = await db.from('expenses').insert({
+                title, expense_type: type, amount,
+                description: document.getElementById('a-desc').value,
+                status: 'pending', submitted_by: window._currentProfile.id,
+            });
+            if (error) { showToast('Error: ' + error.message, 'error'); return; }
+            await logActivity('Submitted purchase request', 'expense', null, `${title} — K${amount}`);
+            showToast('Request submitted for approval!'); closeModal('add-modal'); loadExpenses();
+        }
+    </script>
+</body>
+
+</html>

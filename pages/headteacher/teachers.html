@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teachers | Bluejay School</title>
+    <link rel="stylesheet" href="../../assets/css/main.css">
+</head>
+
+<body>
+    <div class="app">
+        <div id="sidebar-placeholder"></div>
+        <div class="main">
+            <header class="topbar">
+                <div class="topbar-left">
+                    <div class="topbar-title">Teacher Management</div>
+                    <div class="topbar-path">Head Teacher / Teachers</div>
+                </div>
+            </header>
+            <div class="page-content">
+                <div class="ph">
+                    <div>
+                        <h1>Teachers</h1>
+                        <p>View teachers and their subject/class assignments</p>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-header"><span class="material-icons-round"
+                            style="color:var(--primary)">people</span>
+                        <div class="card-title">All Teachers</div>
+                    </div>
+                    <div class="card-body" style="padding:0">
+                        <div id="teacher-list">
+                            <div class="loading">
+                                <div class="spinner"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Assign Subject Modal -->
+    <div class="overlay" id="assign-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <div class="modal-title" id="assign-title">Assign Subject</div><button class="modal-close"
+                    onclick="closeModal('assign-modal')"><span class="material-icons-round">close</span></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="a-tid">
+                <div class="form-group"><label class="form-label">Subject to assign</label><select class="form-control"
+                        id="a-sub">
+                        <option value="">Loading…</option>
+                    </select></div>
+            </div>
+            <div class="modal-footer"><button class="btn btn-outline"
+                    onclick="closeModal('assign-modal')">Cancel</button><button class="btn btn-primary"
+                    onclick="doAssign()">Assign</button></div>
+        </div>
+    </div>
+
+    <script src="../../config.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../../assets/js/shared.js"></script>
+    <script>
+        (async () => {
+            await initApp(['head_teacher']);
+            loadTeachers();
+        })();
+
+        async function loadTeachers() {
+            const el = document.getElementById('teacher-list');
+            const { data: teachers } = await db.from('profiles').select('*').eq('role', 'teacher').eq('status', 'active').order('full_name');
+            if (!teachers?.length) { el.innerHTML = '<div class="empty"><span class="material-icons-round">people</span><h3>No teachers yet</h3></div>'; return; }
+
+            const rows = await Promise.all(teachers.map(async t => {
+                const { data: subs } = await db.from('subjects').select('name,classes(name,section)').eq('teacher_id', t.id);
+                return { t, subs: subs || [] };
+            }));
+
+            el.innerHTML = `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Teacher</th><th>Email</th><th>Phone</th><th>Assigned Subjects</th><th>Actions</th></tr></thead><tbody>
+    ${rows.map(({ t, subs }) => `<tr>
+      <td><div class="tbl-avatar"><div class="tbl-avi">${initials(t.full_name)}</div><div class="tbl-name">${t.full_name}</div></div></td>
+      <td>${t.email}</td>
+      <td>${t.phone || '—'}</td>
+      <td>${subs.length ? subs.map(s => `<span class="badge badge-primary" style="margin:2px">${s.name} (${s.classes?.name || '—'})</span>`).join('') : '<span class="text-muted">None assigned</span>'}</td>
+      <td><button class="btn btn-sm btn-outline" onclick="openAssign('${t.id}','${t.full_name}')"><span class="material-icons-round">add</span> Assign</button></td>
+    </tr>`).join('')}
+  </tbody></table></div>`;
+        }
+
+        async function openAssign(tid, name) {
+            document.getElementById('a-tid').value = tid;
+            document.getElementById('assign-title').textContent = 'Assign to ' + name;
+            const sel = document.getElementById('a-sub');
+            sel.innerHTML = '<option value="">Select subject…</option>';
+            // Only show subjects not already assigned to anyone or assigned to this teacher
+            const { data } = await db.from('subjects').select('id,name,classes(name),teacher_id').order('name');
+            (data || []).forEach(s => sel.insertAdjacentHTML('beforeend', `<option value="${s.id}">${s.name} — Class ${s.classes?.name || '?'} ${s.teacher_id && s.teacher_id !== tid ? '(taken)' : ''}</option>`));
+            openModal('assign-modal');
+        }
+        async function doAssign() {
+            const tid = document.getElementById('a-tid').value, sid = document.getElementById('a-sub').value;
+            if (!sid) { showToast('Select a subject', 'error'); return; }
+            await db.from('subjects').update({ teacher_id: tid }).eq('id', sid);
+            showToast('Subject assigned!'); closeModal('assign-modal'); loadTeachers();
+        }
+    </script>
+</body>
+
+</html>
